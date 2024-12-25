@@ -107,25 +107,22 @@ int main(void)
   MX_CORDIC_Init();
   MX_FMAC_Init();
   /* USER CODE BEGIN 2 */
-	LL_TIM_EnableCounter(TIM6);
-	LL_TIM_EnableIT_UPDATE(TIM6);
+	//LL_TIM_EnableCounter(TIM6);
+	//LL_TIM_EnableIT_UPDATE(TIM6);
 	LL_TIM_EnableCounter(TIM1);
-	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
-	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
-	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
-	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
-	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	omega += 0.5f;
-	if(omega >= 20.0f){
-		omega = 0.0f;
-	}
+	LL_TIM_OC_SetCompareCH1(TIM1, 500);
+	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+	LL_mDelay(1000);
+	LL_TIM_OC_SetCompareCH1(TIM1, 250);
+	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
     /* USER CODE END WHILE */
 
