@@ -110,8 +110,14 @@ int main(void)
 	//LL_TIM_EnableCounter(TIM6);
 	//LL_TIM_EnableIT_UPDATE(TIM6);
 	LL_TIM_EnableCounter(TIM1);
+	LL_TIM_EnableARRPreload(TIM1);
+	LL_TIM_EnableAllOutputs(TIM1);
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
+	//LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	//LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -119,9 +125,13 @@ int main(void)
   while (1)
   {
 	LL_TIM_OC_SetCompareCH1(TIM1, 500);
+	//LL_TIM_OC_SetCompareCH2(TIM1, 500);
+	LL_TIM_OC_SetCompareCH3(TIM1, 500);
 	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
 	LL_TIM_OC_SetCompareCH1(TIM1, 250);
+	//LL_TIM_OC_SetCompareCH2(TIM1, 250);
+	LL_TIM_OC_SetCompareCH3(TIM1, 250);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
     /* USER CODE END WHILE */
@@ -440,7 +450,7 @@ static void MX_TIM1_Init(void)
   LL_TIM_OC_EnablePreload(TIM1, LL_TIM_CHANNEL_CH2);
   LL_TIM_OC_Init(TIM1, LL_TIM_CHANNEL_CH2, &TIM_OC_InitStruct);
   LL_TIM_OC_DisableFast(TIM1, LL_TIM_CHANNEL_CH2);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_FROZEN;
+  LL_TIM_OC_EnablePreload(TIM1, LL_TIM_CHANNEL_CH3);
   LL_TIM_OC_Init(TIM1, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
   LL_TIM_OC_DisableFast(TIM1, LL_TIM_CHANNEL_CH3);
   LL_TIM_SetTriggerOutput(TIM1, LL_TIM_TRGO_RESET);
