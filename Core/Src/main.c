@@ -114,8 +114,8 @@ int main(void)
 	LL_TIM_EnableAllOutputs(TIM1);
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
-	//LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	//LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
   /* USER CODE END 2 */
@@ -125,12 +125,12 @@ int main(void)
   while (1)
   {
 	LL_TIM_OC_SetCompareCH1(TIM1, 500);
-	//LL_TIM_OC_SetCompareCH2(TIM1, 500);
+	LL_TIM_OC_SetCompareCH2(TIM1, 500);
 	LL_TIM_OC_SetCompareCH3(TIM1, 500);
 	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
 	LL_TIM_OC_SetCompareCH1(TIM1, 250);
-	//LL_TIM_OC_SetCompareCH2(TIM1, 250);
+	LL_TIM_OC_SetCompareCH2(TIM1, 250);
 	LL_TIM_OC_SetCompareCH3(TIM1, 250);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
@@ -459,7 +459,7 @@ static void MX_TIM1_Init(void)
   TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_DISABLE;
   TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_DISABLE;
   TIM_BDTRInitStruct.LockLevel = LL_TIM_LOCKLEVEL_OFF;
-  TIM_BDTRInitStruct.DeadTime = 16;
+  TIM_BDTRInitStruct.DeadTime = 32;
   TIM_BDTRInitStruct.BreakState = LL_TIM_BREAK_DISABLE;
   TIM_BDTRInitStruct.BreakPolarity = LL_TIM_BREAK_POLARITY_HIGH;
   TIM_BDTRInitStruct.BreakFilter = LL_TIM_BREAK_FILTER_FDIV1;
