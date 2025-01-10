@@ -65,7 +65,7 @@ static void MX_FMAC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile double omega = 1.0;	//[deg/ms]
+volatile double omega = 0.5;	//[deg/ms]
 /* USER CODE END 0 */
 
 /**
@@ -107,8 +107,6 @@ int main(void)
   MX_CORDIC_Init();
   MX_FMAC_Init();
   /* USER CODE BEGIN 2 */
-	//LL_TIM_EnableCounter(TIM6);
-	//LL_TIM_EnableIT_UPDATE(TIM6);
 	LL_TIM_EnableCounter(TIM1);
 	LL_TIM_EnableARRPreload(TIM1);
 	LL_TIM_EnableAllOutputs(TIM1);
@@ -118,20 +116,23 @@ int main(void)
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
+
+	LL_TIM_EnableCounter(TIM6);
+	LL_TIM_EnableIT_UPDATE(TIM6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	LL_TIM_OC_SetCompareCH1(TIM1, 500);
-	LL_TIM_OC_SetCompareCH2(TIM1, 500);
-	LL_TIM_OC_SetCompareCH3(TIM1, 500);
+	//LL_TIM_OC_SetCompareCH1(TIM1, 500);
+	//LL_TIM_OC_SetCompareCH2(TIM1, 500);
+	//LL_TIM_OC_SetCompareCH3(TIM1, 500);
 	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
-	LL_TIM_OC_SetCompareCH1(TIM1, 250);
-	LL_TIM_OC_SetCompareCH2(TIM1, 250);
-	LL_TIM_OC_SetCompareCH3(TIM1, 250);
+	//LL_TIM_OC_SetCompareCH1(TIM1, 250);
+	//LL_TIM_OC_SetCompareCH2(TIM1, 250);
+	//LL_TIM_OC_SetCompareCH3(TIM1, 250);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
     /* USER CODE END WHILE */
@@ -623,7 +624,7 @@ static void MX_TIM6_Init(void)
   /* USER CODE BEGIN TIM6_Init 1 */
 
   /* USER CODE END TIM6_Init 1 */
-  TIM_InitStruct.Prescaler = 15;
+  TIM_InitStruct.Prescaler = 159;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 999;
   LL_TIM_Init(TIM6, &TIM_InitStruct);

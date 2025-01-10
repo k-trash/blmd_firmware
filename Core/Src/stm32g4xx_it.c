@@ -263,10 +263,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 60.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 999);
+					LL_TIM_OC_SetCompareCH1(TIM1, 900);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
 					state++;
 				}
 				break;
@@ -277,7 +277,7 @@ void TIM6_DAC_IRQHandler(void)
 					LL_TIM_OC_SetCompareCH3(TIM1, 0);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
 					state++;
 				}
 				break;
@@ -285,10 +285,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 180.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 999);
+					LL_TIM_OC_SetCompareCH2(TIM1, 900);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
 					state++;
 				}
 				break;
@@ -296,10 +296,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 240.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
+					LL_TIM_OC_SetCompareCH1(TIM1, 0);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
 					state++;
 				}
 				break;
@@ -307,10 +307,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 300.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 999);
+					LL_TIM_OC_SetCompareCH3(TIM1, 900);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
 					state++;
 				}
 				break;
@@ -321,7 +321,7 @@ void TIM6_DAC_IRQHandler(void)
 					LL_TIM_OC_SetCompareCH2(TIM1, 0);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
 					state = 0u;
 				}
 				break;
