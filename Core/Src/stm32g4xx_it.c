@@ -55,6 +55,7 @@ extern double omega;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern DMA_HandleTypeDef hdma_adc2;
 extern FDCAN_HandleTypeDef hfdcan1;
 /* USER CODE BEGIN EV */
 
@@ -213,6 +214,48 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
+void DMA1_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_adc2);
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel3 global interrupt.
+  */
+void DMA1_Channel3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel3_IRQn 0 */
+
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel4 global interrupt.
+  */
+void DMA1_Channel4_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel4_IRQn 0 */
+
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel4_IRQn 1 */
+}
+
+/**
   * @brief This function handles FDCAN1 interrupt 0.
   */
 void FDCAN1_IT0_IRQHandler(void)
@@ -263,10 +306,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 60.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 999);
+					LL_TIM_OC_SetCompareCH1(TIM1, 80);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
 					state++;
 				}
 				break;
@@ -277,7 +320,7 @@ void TIM6_DAC_IRQHandler(void)
 					LL_TIM_OC_SetCompareCH3(TIM1, 0);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
 					state++;
 				}
 				break;
@@ -285,10 +328,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 180.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 999);
+					LL_TIM_OC_SetCompareCH2(TIM1, 80);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
 					state++;
 				}
 				break;
@@ -296,10 +339,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 240.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
+					LL_TIM_OC_SetCompareCH1(TIM1, 0);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
 					state++;
 				}
 				break;
@@ -307,10 +350,10 @@ void TIM6_DAC_IRQHandler(void)
 				if(theta > 300.0f){
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 999);
+					LL_TIM_OC_SetCompareCH3(TIM1, 80);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
 					state++;
 				}
 				break;
@@ -321,7 +364,7 @@ void TIM6_DAC_IRQHandler(void)
 					LL_TIM_OC_SetCompareCH2(TIM1, 0);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 0);
+					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
 					state = 0u;
 				}
 				break;
