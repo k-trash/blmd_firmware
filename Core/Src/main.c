@@ -60,6 +60,7 @@ static void MX_TIM6_Init(void);
 static void MX_CORDIC_Init(void);
 static void MX_FMAC_Init(void);
 /* USER CODE BEGIN PFP */
+void startSequence(void);
 void stopAllPhase(void);
 /* USER CODE END PFP */
 
@@ -111,83 +112,7 @@ int main(void)
 	LL_TIM_EnableARRPreload(TIM1);
 	LL_TIM_EnableAllOutputs(TIM1);
 
-	LL_mDelay(2000);
-
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
-	LL_TIM_OC_SetCompareCH2(TIM1, 50);
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
-	LL_TIM_OC_SetCompareCH1(TIM1, 0);
-
-	LL_mDelay(50);
-
-	stopAllPhase();
-
-	LL_mDelay(150);
-
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
-	LL_TIM_OC_SetCompareCH3(TIM1, 50);
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
-	LL_TIM_OC_SetCompareCH1(TIM1, 0);
-
-	LL_mDelay(50);
-
-	stopAllPhase();
-
-	LL_mDelay(150);
-
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
-	LL_TIM_OC_SetCompareCH3(TIM1, 50);
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
-	LL_TIM_OC_SetCompareCH2(TIM1, 0);
-
-	LL_mDelay(50);
-
-	stopAllPhase();
-
-	LL_mDelay(1000);
-
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
-	LL_TIM_OC_SetCompareCH2(TIM1, 50);
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
-	LL_TIM_OC_SetCompareCH3(TIM1, 0);
-
-	LL_mDelay(50);
-
-	stopAllPhase();
-
-	LL_mDelay(150);
-
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
-	LL_TIM_OC_SetCompareCH2(TIM1, 50);
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
-	LL_TIM_OC_SetCompareCH2(TIM1, 0);
-
-	LL_mDelay(50);
-
-	stopAllPhase();
-
-	LL_mDelay(150);
-
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
-	LL_TIM_OC_SetCompareCH2(TIM1, 50);
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
-	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
-	LL_TIM_OC_SetCompareCH3(TIM1, 0);
-
-	LL_mDelay(50);
-
-	stopAllPhase();
+	startSequence();
 
 	LL_mDelay(2000);
 
@@ -199,14 +124,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	//LL_TIM_OC_SetCompareCH1(TIM1, 500);
-	//LL_TIM_OC_SetCompareCH2(TIM1, 500);
-	//LL_TIM_OC_SetCompareCH3(TIM1, 500);
 	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
-	//LL_TIM_OC_SetCompareCH1(TIM1, 250);
-	//LL_TIM_OC_SetCompareCH2(TIM1, 250);
-	//LL_TIM_OC_SetCompareCH3(TIM1, 250);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
 
@@ -914,6 +833,85 @@ void stopAllPhase(void){
 	LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
 }
 
+void startSequence(void){
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_OC_SetCompareCH2(TIM1, 50);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
+	LL_TIM_OC_SetCompareCH1(TIM1, 0);
+
+	LL_mDelay(50);
+
+	stopAllPhase();
+
+	LL_mDelay(150);
+
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
+	LL_TIM_OC_SetCompareCH3(TIM1, 50);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
+	LL_TIM_OC_SetCompareCH1(TIM1, 0);
+
+	LL_mDelay(50);
+
+	stopAllPhase();
+
+	LL_mDelay(150);
+
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
+	LL_TIM_OC_SetCompareCH3(TIM1, 50);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_OC_SetCompareCH2(TIM1, 0);
+
+	LL_mDelay(50);
+
+	stopAllPhase();
+
+	LL_mDelay(1000);
+
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
+	LL_TIM_OC_SetCompareCH2(TIM1, 50);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_OC_SetCompareCH3(TIM1, 0);
+
+	LL_mDelay(50);
+
+	stopAllPhase();
+
+	LL_mDelay(150);
+
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);	
+	LL_TIM_OC_SetCompareCH2(TIM1, 50);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_OC_SetCompareCH2(TIM1, 0);
+
+	LL_mDelay(50);
+
+	stopAllPhase();
+
+	LL_mDelay(150);
+
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);	
+	LL_TIM_OC_SetCompareCH2(TIM1, 50);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);	
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);	
+	LL_TIM_OC_SetCompareCH3(TIM1, 0);
+
+	LL_mDelay(50);
+
+	stopAllPhase();
+
+	LL_mDelay(2000);
+}
 /* USER CODE END 4 */
 
 /**
