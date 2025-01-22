@@ -1,5 +1,0 @@
-/home/k-trash/programs/robohan/st/blmd_firmware/CMakeFiles/blmd_firmware.dir
-/home/k-trash/programs/robohan/st/blmd_firmware/CMakeFiles/edit_cache.dir
-/home/k-trash/programs/robohan/st/blmd_firmware/CMakeFiles/rebuild_cache.dir
-/home/k-trash/programs/robohan/st/blmd_firmware/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
-/home/k-trash/programs/robohan/st/blmd_firmware/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir
