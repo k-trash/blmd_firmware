@@ -73,6 +73,8 @@ volatile double omega = 4.0;	//[deg/ms]
 const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {0};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[Y_SIZE + Y_PAD] = {0u};
+float current[2] = {0u};
+uint8_t dma_index = 0u;
 /* USER CODE END 0 */
 
 /**
@@ -162,6 +164,14 @@ int main(void)
   while (1)
   {
 	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+	dma_index = (Y_SIZE + Y_PAD - DMA1_Channel3->CNDTR) & 0xFFFE;
+	if(dma_index == 0){
+		current[0] = y_buffer[Y_SIZE + Y_PAD - 2];
+		current[1] = y_buffer[Y_SIZE + Y_PAD - 1];
+	}else{
+		current[0] = y_buffer[dma_index-2];
+		current[0] = y_buffer[dma_index-1];
+	}
 	LL_mDelay(1000);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
