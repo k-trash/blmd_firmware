@@ -31,7 +31,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ADC_BUF 10
+#define Y_SIZE 2
+#define X1_PAD 4
+#define Y_PAD 4
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -67,6 +70,9 @@ void stopAllPhase(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile double omega = 4.0;	//[deg/ms]
+const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {0};
+volatile uint16_t adc_datas[ADC_BUF] = {0u};
+volatile uint16_t y_buffer[Y_SIZE + Y_PAD] = {0u};
 /* USER CODE END 0 */
 
 /**
@@ -108,6 +114,37 @@ int main(void)
   MX_CORDIC_Init();
   MX_FMAC_Init();
   /* USER CODE BEGIN 2 */
+	LL_ADC_Enable(ADC1);
+	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_1);
+	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_1, LL_ADC_DMA_GetRegAddr(ADC1, LL_ADC_DMA_REG_REGULAR_DATA), (uint32_t)&adc_datas, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_1, ADC_BUF);
+	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
+
+	LL_FMAC_DisableStart(FMAC);
+	LL_FMAC_ConfigX1(FMAC, LL_FMAC_WM_0_THRESHOLD_1, ADC_BUF+Y_SIZE, ADC_BUF+X1_PAD);
+
+	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
+	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_2, (uint32_t)&adc_datas, LL_FMAC_GetX1Base(FMAC), LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_2, ADC_BUF+X1_PAD);
+	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
+
+	LL_FMAC_ConfigY(FMAC, LL_FMAC_WM_0_THRESHOLD_1, 2*ADC_BUF+Y_SIZE+X1_PAD, Y_SIZE+Y_PAD);
+
+	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_3);
+	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_3, LL_FMAC_GetYBase(FMAC), (uint32_t)&y_buffer , LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_3, Y_SIZE+Y_PAD);
+	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_3);
+
+	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF+Y_SIZE);
+
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X1, ADC_BUF, Y_SIZE, 0);
+
+	for(uint8_t i=0;i<ADC_BUF+Y_SIZE;i++){
+		LL_FMAC_WriteData(FMAC, x2_buffer[i]);
+	}
+
+	LL_ADC_REG_StartConversion(ADC1);
+
 	LL_TIM_EnableCounter(TIM1);
 	LL_TIM_EnableARRPreload(TIM1);
 	LL_TIM_EnableAllOutputs(TIM1);
