@@ -22,6 +22,7 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -232,8 +233,7 @@ void TIM1_TRG_COM_TIM17_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-	static double theta = 0.0f;
-	static uint8_t state = 0u;
+	static float theta = 0.0f;
 
   /* USER CODE END TIM6_DAC_IRQn 0 */
 
@@ -244,73 +244,10 @@ void TIM6_DAC_IRQHandler(void)
 			theta -= 360.0f;
 		}
 
-		switch(state){
-			case 0:		//0~60
-				if(theta > 60.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 80);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
-					state++;
-				}
-				break;
-			case 1:		//60~120
-				if(theta > 120.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 0);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
-					state++;
-				}
-				break;
-			case 2:		//120~180
-				if(theta > 180.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 80);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
-					state++;
-				}
-				break;
-			case 3:		//180~240
-				if(theta > 240.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 0);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
-					state++;
-				}
-				break;
-			case 4:		//240~300;
-				if(theta > 300.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 80);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
-					state++;
-				}
-				break;
-			case 5:		//300~360;
-				if(theta < 300.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
-					state = 0u;
-				}
-				break;
+		if(omega < 6.0){
+			rotate120Deg(theta, 80u);
+		}else{
+			rotateSin(theta, 80u);
 		}
 
 		LL_TIM_ClearFlag_UPDATE(TIM6);
@@ -320,5 +257,88 @@ void TIM6_DAC_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+void rotate120Deg(float theta_, uint16_t power_){
+	static uint8_t state = 0u;
+	switch(state){
+		case 0:		//0~60
+			if(theta_ > 60.0f){
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+				LL_TIM_OC_SetCompareCH1(TIM1, power_);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+				state++;
+			}
+			break;
+		case 1:		//60~120
+			if(theta_ > 120.0f){
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+				LL_TIM_OC_SetCompareCH3(TIM1, 0);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+				state++;
+			}
+			break;
+		case 2:		//120~180
+			if(theta_ > 180.0f){
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+				LL_TIM_OC_SetCompareCH2(TIM1, power_);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+				state++;
+			}
+			break;
+		case 3:		//180~240
+			if(theta_ > 240.0f){
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+				LL_TIM_OC_SetCompareCH1(TIM1, 0);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+				state++;
+			}
+			break;
+		case 4:		//240~300;
+			if(theta_ > 300.0f){
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+				LL_TIM_OC_SetCompareCH3(TIM1, power_);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+				state++;
+			}
+			break;
+		case 5:		//300~360;
+			if(theta_ < 300.0f){
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+				LL_TIM_OC_SetCompareCH2(TIM1, 0);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+				state = 0u;
+			}
+			break;
+	}
+}
+
+void rotateSin(float theta_, uint16_t power_){
+	float pwm[3];
+
+	pwm[0] = sin(theta_ * M_PI / 180.0f) + 1.0f;
+	pwm[1] = sin((theta_+120.0f) * M_PI / 180.0f) + 1.0f;
+	pwm[2] = sin((theta_+240.0f) * M_PI / 180.0f) + 1.0f;
+
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1N);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2N);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3N);
+	LL_TIM_OC_SetCompareCH1(TIM1, (uint16_t)(power_*pwm[0]));
+	LL_TIM_OC_SetCompareCH2(TIM1, (uint16_t)(power_*pwm[1]));
+	LL_TIM_OC_SetCompareCH3(TIM1, (uint16_t)(power_*pwm[2]));
+}
 
 /* USER CODE END 1 */

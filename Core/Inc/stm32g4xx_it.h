@@ -59,7 +59,8 @@ void FDCAN1_IT0_IRQHandler(void);
 void TIM1_TRG_COM_TIM17_IRQHandler(void);
 void TIM6_DAC_IRQHandler(void);
 /* USER CODE BEGIN EFP */
-
+void rotate120Deg(float theta_, uint16_t power_);
+void rotateSin(float theta_, uint16_t power_);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus
