@@ -32,7 +32,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define ADC_BUF 10
-#define Y_SIZE 2
+#define Y_SIZE 10
 #define X1_PAD 4
 #define Y_PAD 4
 /* USER CODE END PD */
@@ -170,7 +170,7 @@ int main(void)
 		current[1] = y_buffer[Y_SIZE + Y_PAD - 1];
 	}else{
 		current[0] = y_buffer[dma_index-2];
-		current[0] = y_buffer[dma_index-1];
+		current[1] = y_buffer[dma_index-1];
 	}
 	LL_mDelay(1000);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
