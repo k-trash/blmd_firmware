@@ -70,7 +70,7 @@ void stopAllPhase(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile double omega = 4.0;	//[deg/ms]
-const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {0};
+const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {1484, 7420, 14840, 14840, 7420, 1484,  3621, 10547, 15921, 12586, 4301};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[Y_SIZE + Y_PAD] = {0u};
 float current[2] = {0u};
@@ -139,7 +139,7 @@ int main(void)
 
 	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF+Y_SIZE);
 
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X1, ADC_BUF, Y_SIZE, 0);
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X1, ADC_BUF, Y_SIZE, 6);
 
 	for(uint8_t i=0;i<ADC_BUF+Y_SIZE;i++){
 		LL_FMAC_WriteData(FMAC, x2_buffer[i]);
