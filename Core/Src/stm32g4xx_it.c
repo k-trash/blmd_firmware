@@ -325,8 +325,12 @@ void rotate120Deg(float theta_, uint16_t power_){
 
 void rotateSin(float theta_, uint16_t power_){
 	float pwm[3];
+	int32_t theta = (int32_t)((theta_-180.0f)/180.0f*65536.0f)<<15;
 
-	pwm[0] = sin(theta_ * M_PI / 180.0f) + 1.0f;
+	LL_CORDIC_SetFunction(CORDIC, LL_CORDIC_FUNCTION_SINE);
+	LL_CORDIC_WriteData(CORDIC, (uint32_t)theta);
+	LL_CORDIC_WriteData(CORDIC, 0x7FFFFFFF);	
+
 	pwm[1] = sin((theta_+120.0f) * M_PI / 180.0f) + 1.0f;
 	pwm[2] = sin((theta_+240.0f) * M_PI / 180.0f) + 1.0f;
 
@@ -336,9 +340,11 @@ void rotateSin(float theta_, uint16_t power_){
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2N);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3N);
-	LL_TIM_OC_SetCompareCH1(TIM1, (uint16_t)(power_*pwm[0]));
 	LL_TIM_OC_SetCompareCH2(TIM1, (uint16_t)(power_*pwm[1]));
 	LL_TIM_OC_SetCompareCH3(TIM1, (uint16_t)(power_*pwm[2]));
+
+	while(!LL_CORDIC_IsActiveFlag_RRDY(CORDIC));
+	LL_TIM_OC_SetCompareCH1(TIM1, LL_CORDIC_ReadData(CORDIC));
 }
 
 /* USER CODE END 1 */
