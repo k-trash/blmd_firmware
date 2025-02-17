@@ -31,10 +31,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUF 10
+#define ADC_BUF 12
 #define Y_SIZE 10
-#define X1_PAD 4
-#define Y_PAD 4
+#define X1_PAD 2
+#define Y_PAD 2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -70,9 +70,9 @@ void stopAllPhase(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile double omega = 4.0;	//[deg/ms]
-const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {1484, 7420, 14840, 14840, 7420, 1484,  3621, 10547, 15921, 12586, 4301};
+const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {1484, 0, 7420, 0, 14840, 0, 14840, 0, 7420, 0, 1484, 0,  0, -3621, 0, -10547, 0, -15921, 0, -12586, 0, -4301};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
-volatile uint16_t y_buffer[Y_SIZE + Y_PAD] = {0u};
+volatile uint16_t y_buffer[2] = {0u};
 float current[2] = {0u};
 uint8_t dma_index = 0u;
 /* USER CODE END 0 */
@@ -125,16 +125,11 @@ int main(void)
 	LL_FMAC_DisableStart(FMAC);
 	LL_FMAC_ConfigX1(FMAC, LL_FMAC_WM_0_THRESHOLD_1, ADC_BUF+Y_SIZE, ADC_BUF+X1_PAD);
 
-	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
-	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_2, (uint32_t)&adc_datas, LL_FMAC_GetX1Base(FMAC), LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_2, ADC_BUF+X1_PAD);
-	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
-
 	LL_FMAC_ConfigY(FMAC, LL_FMAC_WM_0_THRESHOLD_1, 2*ADC_BUF+Y_SIZE+X1_PAD, Y_SIZE+Y_PAD);
 
 	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_3);
-	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_3, LL_FMAC_GetYBase(FMAC), (uint32_t)&y_buffer , LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_3, Y_SIZE+Y_PAD);
+	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_3, (uint32_t)&FMAC->RDATA, (uint32_t)&y_buffer , LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_3, 2);
 	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_3);
 
 	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF+Y_SIZE);
@@ -145,18 +140,38 @@ int main(void)
 		LL_FMAC_WriteData(FMAC, x2_buffer[i]);
 	}
 
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_Y, ADC_BUF, Y_SIZE, 6);
+
+	for(uint8_t i=0;i<Y_SIZE+Y_PAD;i++){
+		LL_FMAC_WriteData(FMAC, 0);
+	}
+
+	LL_FMAC_EnableDMAReq_READ(FMAC);
+	LL_FMAC_EnableDMAReq_WRITE(FMAC);
+
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_IIR_DIRECT_FORM_1, ADC_BUF, Y_SIZE, 6);
+
+	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
+	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_2, (uint32_t)&adc_datas, (uint32_t)&FMAC->WDATA, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_2, ADC_BUF);
+	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
+
 	LL_ADC_REG_StartConversion(ADC1);
+	LL_FMAC_EnableStart(FMAC);
 
 	LL_TIM_EnableCounter(TIM1);
 	LL_TIM_EnableARRPreload(TIM1);
 	LL_TIM_EnableAllOutputs(TIM1);
 
-	startSequence();
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+	LL_TIM_OC_SetCompareCH1(TIM1, 500);
+
+	//startSequence();
 
 	LL_mDelay(2000);
 
-	LL_TIM_EnableCounter(TIM6);
-	LL_TIM_EnableIT_UPDATE(TIM6);
+	//LL_TIM_EnableCounter(TIM6);
+	//LL_TIM_EnableIT_UPDATE(TIM6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -164,14 +179,8 @@ int main(void)
   while (1)
   {
 	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
-	dma_index = (Y_SIZE + Y_PAD - DMA1_Channel3->CNDTR) & 0xFFFE;
-	if(dma_index == 0){
-		current[0] = y_buffer[Y_SIZE + Y_PAD - 2];
-		current[1] = y_buffer[Y_SIZE + Y_PAD - 1];
-	}else{
-		current[0] = y_buffer[dma_index-2];
-		current[1] = y_buffer[dma_index-1];
-	}
+	current[0] = (float)(y_buffer[0]) / 40.96f;
+	current[1] = (float)(y_buffer[1]) / 40.96f;
 	LL_mDelay(1000);
 	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
 	LL_mDelay(1000);
@@ -286,9 +295,9 @@ static void MX_ADC1_Init(void)
 
   LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_1, LL_DMA_PERIPH_NOINCREMENT);
 
-  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_1, LL_DMA_MEMORY_NOINCREMENT);
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_1, LL_DMA_MEMORY_INCREMENT);
 
-  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_1, LL_DMA_PDATAALIGN_WORD);
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_1, LL_DMA_PDATAALIGN_HALFWORD);
 
   LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_1, LL_DMA_MDATAALIGN_HALFWORD);
 
@@ -305,8 +314,8 @@ static void MX_ADC1_Init(void)
   ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
   ADC_REG_InitStruct.SequencerLength = LL_ADC_REG_SEQ_SCAN_ENABLE_2RANKS;
   ADC_REG_InitStruct.SequencerDiscont = LL_ADC_REG_SEQ_DISCONT_DISABLE;
-  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_SINGLE;
-  ADC_REG_InitStruct.DMATransfer = LL_ADC_REG_DMA_TRANSFER_LIMITED;
+  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_CONTINUOUS;
+  ADC_REG_InitStruct.DMATransfer = LL_ADC_REG_DMA_TRANSFER_UNLIMITED;
   ADC_REG_InitStruct.Overrun = LL_ADC_REG_OVR_DATA_PRESERVED;
   LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
   LL_ADC_SetGainCompensation(ADC1, 0);
@@ -437,26 +446,9 @@ static void MX_FMAC_Init(void)
   /* FMAC DMA Init */
 
   /* FMAC_READ Init */
-  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_2, LL_DMAMUX_REQ_FMAC_READ);
+  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_3, LL_DMAMUX_REQ_FMAC_READ);
 
-  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_2, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-
-  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_2, LL_DMA_PRIORITY_LOW);
-
-  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_2, LL_DMA_MODE_CIRCULAR);
-
-  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_2, LL_DMA_PERIPH_NOINCREMENT);
-
-  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_2, LL_DMA_MEMORY_NOINCREMENT);
-
-  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_2, LL_DMA_PDATAALIGN_WORD);
-
-  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_2, LL_DMA_MDATAALIGN_HALFWORD);
-
-  /* FMAC_WRITE Init */
-  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_3, LL_DMAMUX_REQ_FMAC_WRITE);
-
-  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_3, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_3, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
 
   LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_3, LL_DMA_PRIORITY_LOW);
 
@@ -469,6 +461,23 @@ static void MX_FMAC_Init(void)
   LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_3, LL_DMA_PDATAALIGN_WORD);
 
   LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_3, LL_DMA_MDATAALIGN_HALFWORD);
+
+  /* FMAC_WRITE Init */
+  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_2, LL_DMAMUX_REQ_FMAC_WRITE);
+
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_2, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
+
+  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_2, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_2, LL_DMA_MODE_CIRCULAR);
+
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_2, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_2, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_2, LL_DMA_PDATAALIGN_WORD);
+
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_2, LL_DMA_MDATAALIGN_HALFWORD);
 
   /* USER CODE BEGIN FMAC_Init 1 */
 
