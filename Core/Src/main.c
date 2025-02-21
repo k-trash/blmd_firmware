@@ -70,7 +70,7 @@ void stopAllPhase(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile double omega = 4.0;	//[deg/ms]
-const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {1484, 0, 7420, 0, 14840, 0, 14840, 0, 7420, 0, 1484, 0,  0, -3621, 0, -10547, 0, -15921, 0, -12586, 0, -4301};
+const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {27, 0, 134, 0, 269, 0, 269, 0, 134, 0, 27, 0,  0, 20267, 0, -23027, 0, 13954, 0, -4459, 0, 592};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[2] = {0u};
 float current[2] = {0u};
@@ -134,22 +134,22 @@ int main(void)
 
 	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF+Y_SIZE);
 
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X1, ADC_BUF, Y_SIZE, 6);
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X2, ADC_BUF, Y_SIZE, 2);
 
 	for(uint8_t i=0;i<ADC_BUF+Y_SIZE;i++){
 		LL_FMAC_WriteData(FMAC, x2_buffer[i]);
 	}
 
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_Y, ADC_BUF, Y_SIZE, 6);
+	//LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_Y, ADC_BUF, Y_SIZE, 2);
 
-	for(uint8_t i=0;i<Y_SIZE+Y_PAD;i++){
-		LL_FMAC_WriteData(FMAC, 0);
-	}
+	//for(uint8_t i=0;i<Y_SIZE;i++){
+	//	LL_FMAC_WriteData(FMAC, 0);
+//}
 
 	LL_FMAC_EnableDMAReq_READ(FMAC);
 	LL_FMAC_EnableDMAReq_WRITE(FMAC);
 
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_IIR_DIRECT_FORM_1, ADC_BUF, Y_SIZE, 6);
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_IIR_DIRECT_FORM_1, ADC_BUF, Y_SIZE, 2);
 
 	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
 	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_2, (uint32_t)&adc_datas, (uint32_t)&FMAC->WDATA, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
@@ -320,7 +320,7 @@ static void MX_ADC1_Init(void)
   LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
   LL_ADC_SetGainCompensation(ADC1, 0);
   LL_ADC_SetOverSamplingScope(ADC1, LL_ADC_OVS_DISABLE);
-  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_ASYNC_DIV4;
+  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_SYNC_PCLK_DIV4;
   ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
   LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &ADC_CommonInitStruct);
 
@@ -344,13 +344,13 @@ static void MX_ADC1_Init(void)
   /** Configure Regular Channel
   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_1);
-  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_2CYCLES_5);
+  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SAMPLINGTIME_12CYCLES_5);
   LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_1, LL_ADC_SINGLE_ENDED);
 
   /** Configure Regular Channel
   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_2);
-  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SAMPLINGTIME_2CYCLES_5);
+  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SAMPLINGTIME_12CYCLES_5);
   LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SINGLE_ENDED);
   /* USER CODE BEGIN ADC1_Init 2 */
 
