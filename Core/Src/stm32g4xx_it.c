@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "math.h"
+#include "stdlib.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +55,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 extern double omega;
+extern uint16_t adc_datas[2];
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -200,6 +203,28 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles DMA1 channel1 global interrupt.
+  */
+void DMA1_Channel1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
+  	if( LL_DMA_IsActiveFlag_TC1(DMA1) == 1){
+		LL_DMA_ClearFlag_TC1(DMA1);
+	}
+	char str[10];
+	sprintf(str, "%d\n" ,adc_datas[0]);
+	for(uint8_t i=0;str[i] != '\0'; i++){
+		ITM_SendChar(str[i]);
+	}
+
+  /* USER CODE END DMA1_Channel1_IRQn 0 */
+
+  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel1_IRQn 1 */
+}
+
+/**
   * @brief This function handles FDCAN1 interrupt 0.
   */
 void FDCAN1_IT0_IRQHandler(void)
@@ -245,9 +270,10 @@ void TIM6_DAC_IRQHandler(void)
 		}
 
 		if(omega < 6.0){
-			rotate120Deg(theta, 80u);
+			rotate120Deg(theta, 600u);
 		}else{
-			rotateSin(theta, 80u);
+			//rotate120Deg(theta, 400u);
+			rotateSin(theta, 900u);
 		}
 
 		LL_TIM_ClearFlag_UPDATE(TIM6);
@@ -325,7 +351,7 @@ void rotate120Deg(float theta_, uint16_t power_){
 
 void rotateSin(float theta_, uint16_t power_){
 	float pwm[3];
-	int32_t theta = (int32_t)((theta_-180.0f)/180.0f*65536.0f)<<15;
+	int32_t theta = theta_>180.0f ? (int32_t)((180.0f-theta_)/180.0f*2147483648.0f) : (int32_t)((theta_)/180.0f*2147483648.0f);
 
 	LL_CORDIC_SetFunction(CORDIC, LL_CORDIC_FUNCTION_SINE);
 	LL_CORDIC_WriteData(CORDIC, (uint32_t)theta);
@@ -334,17 +360,21 @@ void rotateSin(float theta_, uint16_t power_){
 	pwm[1] = sin((theta_+120.0f) * M_PI / 180.0f) + 1.0f;
 	pwm[2] = sin((theta_+240.0f) * M_PI / 180.0f) + 1.0f;
 
+	LL_TIM_OC_SetCompareCH2(TIM1, (uint16_t)(power_*pwm[1])>>1);
+	LL_TIM_OC_SetCompareCH3(TIM1, (uint16_t)(power_*pwm[2])>>1);
+
+	while(!LL_CORDIC_IsActiveFlag_RRDY(CORDIC));
+	int32_t tmp = LL_CORDIC_ReadData(CORDIC);
+	uint16_t value = (((tmp >> 10)*power_)>>22) + (power_>>1);
+	LL_CORDIC_ReadData(CORDIC);
+	LL_TIM_OC_SetCompareCH1(TIM1, value);
+
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1N);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2N);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3N);
-	LL_TIM_OC_SetCompareCH2(TIM1, (uint16_t)(power_*pwm[1]));
-	LL_TIM_OC_SetCompareCH3(TIM1, (uint16_t)(power_*pwm[2]));
-
-	while(!LL_CORDIC_IsActiveFlag_RRDY(CORDIC));
-	LL_TIM_OC_SetCompareCH1(TIM1, LL_CORDIC_ReadData(CORDIC));
 }
 
 /* USER CODE END 1 */
