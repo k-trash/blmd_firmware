@@ -31,10 +31,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUF 12
+#define ADC_BUF 34
 #define Y_SIZE 10
 #define X1_PAD 2
-#define Y_PAD 2
+#define Y_PAD 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -70,7 +70,7 @@ void stopAllPhase(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile double omega = 4.0;	//[deg/ms]
-const int16_t x2_buffer[ADC_BUF + Y_SIZE] = {27, 0, 134, 0, 269, 0, 269, 0, 134, 0, 27, 0,  0, 20267, 0, -23027, 0, 13954, 0, -4459, 0, 592};
+const int16_t x2_buffer[ADC_BUF] = {0, 0, -11, 0, 0, 0, 179, 0, 0, 0, -964, 0, 0, 0, 4894, 0, 8192, 0, 4894, 0, 0, 0, -964, 0, 0, 0, 179, 0, 0, 0, -10, 0};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[2] = {0u};
 float current[2] = {0u};
@@ -123,18 +123,18 @@ int main(void)
 	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
 
 	LL_FMAC_DisableStart(FMAC);
-	LL_FMAC_ConfigX1(FMAC, LL_FMAC_WM_0_THRESHOLD_1, ADC_BUF+Y_SIZE, ADC_BUF+X1_PAD);
+	LL_FMAC_ConfigX1(FMAC, LL_FMAC_WM_0_THRESHOLD_1, ADC_BUF, ADC_BUF+X1_PAD);
 
-	LL_FMAC_ConfigY(FMAC, LL_FMAC_WM_0_THRESHOLD_1, 2*ADC_BUF+Y_SIZE+X1_PAD, Y_SIZE+Y_PAD);
+	LL_FMAC_ConfigY(FMAC, LL_FMAC_WM_0_THRESHOLD_1, 2*ADC_BUF+X1_PAD, Y_PAD);
 
 	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_3);
 	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_3, (uint32_t)&FMAC->RDATA, (uint32_t)&y_buffer , LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
 	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_3, 2);
 	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_3);
 
-	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF+Y_SIZE);
+	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF);
 
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X2, ADC_BUF, Y_SIZE, 2);
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X2, ADC_BUF, 0, 1);
 
 	for(uint8_t i=0;i<ADC_BUF+Y_SIZE;i++){
 		LL_FMAC_WriteData(FMAC, x2_buffer[i]);
@@ -149,7 +149,7 @@ int main(void)
 	LL_FMAC_EnableDMAReq_READ(FMAC);
 	LL_FMAC_EnableDMAReq_WRITE(FMAC);
 
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_IIR_DIRECT_FORM_1, ADC_BUF, Y_SIZE, 2);
+	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_CONVO_FIR, ADC_BUF, 0, 1);
 
 	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
 	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_2, (uint32_t)&adc_datas, (uint32_t)&FMAC->WDATA, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
@@ -164,7 +164,7 @@ int main(void)
 	LL_TIM_EnableAllOutputs(TIM1);
 
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-	LL_TIM_OC_SetCompareCH1(TIM1, 500);
+	LL_TIM_OC_SetCompareCH1(TIM1, 200);
 
 	//startSequence();
 
@@ -311,10 +311,10 @@ static void MX_ADC1_Init(void)
   ADC_InitStruct.DataAlignment = LL_ADC_DATA_ALIGN_RIGHT;
   ADC_InitStruct.LowPowerMode = LL_ADC_LP_MODE_NONE;
   LL_ADC_Init(ADC1, &ADC_InitStruct);
-  ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
+  ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_EXT_TIM1_TRGO;
   ADC_REG_InitStruct.SequencerLength = LL_ADC_REG_SEQ_SCAN_ENABLE_2RANKS;
   ADC_REG_InitStruct.SequencerDiscont = LL_ADC_REG_SEQ_DISCONT_DISABLE;
-  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_CONTINUOUS;
+  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_SINGLE;
   ADC_REG_InitStruct.DMATransfer = LL_ADC_REG_DMA_TRANSFER_UNLIMITED;
   ADC_REG_InitStruct.Overrun = LL_ADC_REG_OVR_DATA_PRESERVED;
   LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
@@ -323,6 +323,7 @@ static void MX_ADC1_Init(void)
   ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_SYNC_PCLK_DIV4;
   ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
   LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &ADC_CommonInitStruct);
+  LL_ADC_REG_SetTriggerEdge(ADC1, LL_ADC_REG_TRIG_EXT_RISING);
 
   /* Disable ADC deep power down (enabled by default after reset state) */
   LL_ADC_DisableDeepPowerDown(ADC1);
@@ -519,7 +520,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 1 */
 
   /* USER CODE END TIM1_Init 1 */
-  TIM_InitStruct.Prescaler = 7;
+  TIM_InitStruct.Prescaler = 159;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
   TIM_InitStruct.Autoreload = 999;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
