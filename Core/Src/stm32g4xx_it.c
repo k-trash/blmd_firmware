@@ -211,11 +211,6 @@ void DMA1_Channel1_IRQHandler(void)
   	if( LL_DMA_IsActiveFlag_TC1(DMA1) == 1){
 		LL_DMA_ClearFlag_TC1(DMA1);
 	}
-	char str[10];
-	sprintf(str, "%d\n" ,adc_datas[0]);
-	for(uint8_t i=0;str[i] != '\0'; i++){
-		ITM_SendChar(str[i]);
-	}
 
   /* USER CODE END DMA1_Channel1_IRQn 0 */
 
@@ -269,11 +264,12 @@ void TIM6_DAC_IRQHandler(void)
 			theta -= 360.0f;
 		}
 
-		if(omega < 6.0){
-			rotate120Deg(theta, 600u);
+		if(omega < 5.0){
+			rotateSin(theta, 500u);
+			//rotate120Deg(theta, 200u);
 		}else{
 			//rotate120Deg(theta, 400u);
-			rotateSin(theta, 900u);
+			rotateSin(theta, 300u);
 		}
 
 		LL_TIM_ClearFlag_UPDATE(TIM6);
@@ -286,8 +282,8 @@ void TIM6_DAC_IRQHandler(void)
 void rotate120Deg(float theta_, uint16_t power_){
 	static uint8_t state = 0u;
 	switch(state){
-		case 0:		//0~60
-			if(theta_ > 60.0f){
+		case 0:		//330~30
+			if(theta_ > 30.0f){
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
 				LL_TIM_OC_SetCompareCH1(TIM1, power_);
@@ -297,7 +293,7 @@ void rotate120Deg(float theta_, uint16_t power_){
 			}
 			break;
 		case 1:		//60~120
-			if(theta_ > 120.0f){
+			if(theta_ > 90.0f){
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
 				LL_TIM_OC_SetCompareCH3(TIM1, 0);
@@ -307,7 +303,7 @@ void rotate120Deg(float theta_, uint16_t power_){
 			}
 			break;
 		case 2:		//120~180
-			if(theta_ > 180.0f){
+			if(theta_ > 150.0f){
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
 				LL_TIM_OC_SetCompareCH2(TIM1, power_);
@@ -317,7 +313,7 @@ void rotate120Deg(float theta_, uint16_t power_){
 			}
 			break;
 		case 3:		//180~240
-			if(theta_ > 240.0f){
+			if(theta_ > 210.0f){
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
 				LL_TIM_OC_SetCompareCH1(TIM1, 0);
@@ -327,7 +323,7 @@ void rotate120Deg(float theta_, uint16_t power_){
 			}
 			break;
 		case 4:		//240~300;
-			if(theta_ > 300.0f){
+			if(theta_ > 270.0f){
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
 				LL_TIM_OC_SetCompareCH3(TIM1, power_);
@@ -337,12 +333,14 @@ void rotate120Deg(float theta_, uint16_t power_){
 			}
 			break;
 		case 5:		//300~360;
-			if(theta_ < 300.0f){
+			if(theta_ > 330.0f){
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
 				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
 				LL_TIM_OC_SetCompareCH2(TIM1, 0);
 				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+			}
+			if(theta_<270.0f){
 				state = 0u;
 			}
 			break;
@@ -351,7 +349,7 @@ void rotate120Deg(float theta_, uint16_t power_){
 
 void rotateSin(float theta_, uint16_t power_){
 	float pwm[3];
-	int32_t theta = theta_>180.0f ? (int32_t)((180.0f-theta_)/180.0f*2147483648.0f) : (int32_t)((theta_)/180.0f*2147483648.0f);
+	int32_t theta = theta_>180.0f ? (int32_t)((theta_-360.0f)/180.0f*2147483648.0f) : (int32_t)((theta_)/180.0f*2147483648.0f);
 
 	LL_CORDIC_SetFunction(CORDIC, LL_CORDIC_FUNCTION_SINE);
 	LL_CORDIC_WriteData(CORDIC, (uint32_t)theta);

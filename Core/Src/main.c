@@ -70,7 +70,7 @@ void stopAllPhase(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile double omega = 3.0;	//[deg/ms]
+volatile double omega = 2.5;	//[deg/ms]
 //const int16_t x2_buffer[ADC_BUF] = {0, 0, -11, 0, 0, 0, 179, 0, 0, 0, -964, 0, 0, 0, 4894, 0, 8192, 0, 4894, 0, 0, 0, -964, 0, 0, 0, 179, 0, 0, 0, -10, 0};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
 //volatile uint16_t y_buffer[2] = {0u};
@@ -182,13 +182,17 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
-	LL_mDelay(100);
-	LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
-	LL_mDelay(100);
-
 	if(omega < 8){
 		omega += 0.1f;
+		LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+		LL_mDelay(100);
+		LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
+		LL_mDelay(100);
+	}
+	char str[10];
+	sprintf(str, "%d\n" ,adc_datas[0]);
+	for(uint8_t i=0;str[i] != '\0'; i++){
+		ITM_SendChar(str[i]);
 	}
     /* USER CODE END WHILE */
 
