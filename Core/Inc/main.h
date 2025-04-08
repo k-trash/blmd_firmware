@@ -29,14 +29,17 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_ll_adc.h"
+#include "stm32g4xx_ll_comp.h"
+#include "stm32g4xx_ll_exti.h"
 #include "stm32g4xx_ll_cordic.h"
 #include "stm32g4xx_ll_dma.h"
 #include "stm32g4xx_ll_fmac.h"
+#include "stm32g4xx_ll_i2c.h"
+#include "stm32g4xx_ll_opamp.h"
 #include "stm32g4xx_ll_rcc.h"
 #include "stm32g4xx_ll_bus.h"
 #include "stm32g4xx_ll_crs.h"
 #include "stm32g4xx_ll_system.h"
-#include "stm32g4xx_ll_exti.h"
 #include "stm32g4xx_ll_cortex.h"
 #include "stm32g4xx_ll_utils.h"
 #include "stm32g4xx_ll_pwr.h"
@@ -72,18 +75,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define ID1_Pin LL_GPIO_PIN_4
-#define ID1_GPIO_Port GPIOA
-#define ID2_Pin LL_GPIO_PIN_5
-#define ID2_GPIO_Port GPIOA
-#define ID3_Pin LL_GPIO_PIN_6
-#define ID3_GPIO_Port GPIOA
-#define ID4_Pin LL_GPIO_PIN_15
-#define ID4_GPIO_Port GPIOA
-#define STATUS_LED_Pin LL_GPIO_PIN_6
-#define STATUS_LED_GPIO_Port GPIOB
-#define ID_DISP_LED_Pin LL_GPIO_PIN_7
-#define ID_DISP_LED_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

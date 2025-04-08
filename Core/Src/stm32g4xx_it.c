@@ -59,7 +59,7 @@ extern uint16_t adc_datas[2];
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern FDCAN_HandleTypeDef hfdcan1;
+
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -220,62 +220,59 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles FDCAN1 interrupt 0.
+  * @brief This function handles DMA1 channel2 global interrupt.
   */
-void FDCAN1_IT0_IRQHandler(void)
+void DMA1_Channel2_IRQHandler(void)
 {
-  /* USER CODE BEGIN FDCAN1_IT0_IRQn 0 */
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
 
-  /* USER CODE END FDCAN1_IT0_IRQn 0 */
-  HAL_FDCAN_IRQHandler(&hfdcan1);
-  /* USER CODE BEGIN FDCAN1_IT0_IRQn 1 */
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
 
-  /* USER CODE END FDCAN1_IT0_IRQn 1 */
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
 }
 
 /**
-  * @brief This function handles TIM1 trigger and commutation interrupts and TIM17 global interrupt.
+  * @brief This function handles DMA1 channel3 global interrupt.
   */
-void TIM1_TRG_COM_TIM17_IRQHandler(void)
+void DMA1_Channel3_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 0 */
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
 
-  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 0 */
+  /* USER CODE END DMA1_Channel3_IRQn 0 */
 
-  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 1 */
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
 
-  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 1 */
+  /* USER CODE END DMA1_Channel3_IRQn 1 */
 }
 
 /**
-  * @brief This function handles TIM6 global interrupt, DAC1 and DAC3 channel underrun error interrupts.
+  * @brief This function handles DMA1 channel4 global interrupt.
   */
-void TIM6_DAC_IRQHandler(void)
+void DMA1_Channel4_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-	static float theta = 0.0f;
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
 
-  /* USER CODE END TIM6_DAC_IRQn 0 */
+  /* USER CODE END DMA1_Channel4_IRQn 0 */
 
-  /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
-	if(LL_TIM_IsActiveFlag_UPDATE(TIM6)){
-		theta += omega;
-		if(theta > 360.0f){
-			theta -= 360.0f;
-		}
+  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
-		if(omega < 5.0){
-			rotateSin(theta, 500u);
-			//rotate120Deg(theta, 200u);
-		}else{
-			//rotate120Deg(theta, 400u);
-			rotateSin(theta, 300u);
-		}
+  /* USER CODE END DMA1_Channel4_IRQn 1 */
+}
 
-		LL_TIM_ClearFlag_UPDATE(TIM6);
-	}
+/**
+  * @brief This function handles TIM1 update interrupt and TIM16 global interrupt.
+  */
+void TIM1_UP_TIM16_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
 
-  /* USER CODE END TIM6_DAC_IRQn 1 */
+  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
+
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
+
+  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
@@ -373,6 +370,8 @@ void rotateSin(float theta_, uint16_t power_){
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2N);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3);
 	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3N);
+
+	
 }
 
 /* USER CODE END 1 */
