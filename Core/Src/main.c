@@ -173,6 +173,9 @@ int main(void)
 	LL_ADC_REG_StartConversion(ADC1);
 	LL_FMAC_EnableStart(FMAC);
 
+	LL_OPAMP_Enable(OPAMP2);
+	LL_OPAMP_Enable(OPAMP3);
+
 	LL_TIM_EnableCounter(TIM1);
 	LL_TIM_EnableARRPreload(TIM1);
 	LL_TIM_EnableAllOutputs(TIM1);
