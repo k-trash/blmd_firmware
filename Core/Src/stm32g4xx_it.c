@@ -29,12 +29,28 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define KP (int32_t)(0.5 * 1024)		//0.5
+#define KI (int32_t)(0.002 * 1024)		//0.002
 
+#define FREQ_T (int32_t)(1024/32)		//T[ms] (32kHz)
+
+#define RAD0   (int32_t)(  0*M_PI/180*1024)	//  0deg
+#define RAD30  (int32_t)( 30*M_PI/180*1024)	// 30deg
+#define RAD60  (int32_t)( 60*M_PI/180*1024)	// 60deg
+#define RAD90  (int32_t)( 90*M_PI/180*1024)	// 90deg
+#define RAD120 (int32_t)(120*M_PI/180*1024)	//120deg
+#define RAD150 (int32_t)(150*M_PI/180*1024)	//150deg
+#define RAD180 (int32_t)(180*M_PI/180*1024)	//180deg
+#define RAD210 (int32_t)(210*M_PI/180*1024)	//210deg
+#define RAD240 (int32_t)(240*M_PI/180*1024)	//240deg
+#define RAD270 (int32_t)(270*M_PI/180*1024)	//270deg
+#define RAD300 (int32_t)(300*M_PI/180*1024)	//300deg
+#define RAD330 (int32_t)(330*M_PI/180*1024)	//330deg
+#define RAD360 (int32_t)(360*M_PI/180*1024)	//360deg
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -44,7 +60,14 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern RingBuf pi_u;		//for pi control
+extern RingBuf pi_e;		//for pi control
 
+extern int32_t omg_tg;
+extern int32_t omg_est;
+extern int32_t adv_ang;
+extern int32_t rot_est;
+extern uint16_t adc_datas[2];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -54,8 +77,6 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern double omega;
-extern uint16_t adc_datas[2];
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -275,8 +296,26 @@ void TIM1_UP_TIM16_IRQHandler(void)
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 
+/**
+  * @brief This function handles COMP1, COMP2 and COMP3 interrupts through EXTI lines 21, 22 and 29.
+  */
+void COMP1_2_3_IRQHandler(void)
+{
+  /* USER CODE BEGIN COMP1_2_3_IRQn 0 */
+  if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_21)){
+	LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_21);
+	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+  }
+
+  /* USER CODE END COMP1_2_3_IRQn 0 */
+
+  /* USER CODE BEGIN COMP1_2_3_IRQn 1 */
+
+  /* USER CODE END COMP1_2_3_IRQn 1 */
+}
+
 /* USER CODE BEGIN 1 */
-void rotate120Deg(float theta_, uint16_t power_){
+void forceRotate(float theta_, uint16_t power_){
 	static uint8_t state = 0u;
 	switch(state){
 		case 0:		//330~30
@@ -342,6 +381,92 @@ void rotate120Deg(float theta_, uint16_t power_){
 			}
 			break;
 	}
+}
+
+static inline void rotate120Deg(int32_t *rot_est_, int32_t omg_est_, int32_t adv_ang_, RingBuf *pi_e_, RingBuf *pi_u_){
+	(*rot_est_) += (omg_est_*FREQ_T) >> 10;
+	int32_t ctl_ang = (*rot_est_) + adv_ang_;
+
+	ctl_ang += ctl_ang < RAD0 ? RAD360 : RAD0;
+	ctl_ang -= ctl_ang > RAD360 ? RAD360 : RAD0;
+
+	//PI control section
+	pi_e_->data[pi_e_->pnt] = omg_tg - omg_est;
+	pi_u_->data[pi_u_->pnt] = 2*pi_u_->data[(pi_u_->pnt+0x03)|0x03] - pi_u_->data[(pi_u_->pnt+0x02)|0x03] - (KP*pi_e_->data[(pi_e_->pnt+0x03)|0x03])>>10 + ((KP+KI)*pi_e_->data[pi_e_->pnt])>>10;
+
+	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > 999<<10 ? 999<<10 : pi_u_->data[pi_u_->pnt];
+
+	if(ctl_ang >= RAD30 && ctl_ang < RAD90){
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, pi_u_->data[pi_u_->pnt]>>10);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+	}else if(ctl_ang >= RAD90 && ctl_ang < RAD150){
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, pi_u_->data[pi_u_->pnt]>>10);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, 0);
+	}else if(ctl_ang >= RAD150 && ctl_ang < RAD210){
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, pi_u_->data[pi_u_->pnt]>>10);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, 0);
+	}else if(ctl_ang >= RAD210 && ctl_ang < RAD270){
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, pi_u_->data[pi_u_->pnt]>>10);
+
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+	}else if(ctl_ang >= RAD270 && ctl_ang < RAD330){
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, pi_u_->data[pi_u_->pnt]>>10);
+	}else{
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, pi_u_->data[pi_u_->pnt]>>10);
+	}
+
+	//update ring buffer pointer
+	pi_u_->pnt = (pi_u_->pnt+1) | 0x03;
+	pi_e_->pnt = (pi_e_->pnt+1) | 0x03;
 }
 
 void rotateSin(float theta_, uint16_t power_){

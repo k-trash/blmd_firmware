@@ -54,7 +54,10 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef struct RingBuf{
+	uint8_t pnt;
+	int32_t data[8];
+}RingBuf;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -71,10 +74,15 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void startSequence(void);
+void stopAllPhase(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define LD_ID_Pin LL_GPIO_PIN_15
+#define LD_ID_GPIO_Port GPIOA
+#define LD_STATUS_Pin LL_GPIO_PIN_2
+#define LD_STATUS_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 

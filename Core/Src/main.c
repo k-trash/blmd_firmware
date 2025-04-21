@@ -48,7 +48,21 @@
 FDCAN_HandleTypeDef hfdcan1;
 
 /* USER CODE BEGIN PV */
+/* for PI control valuables */
+RingBuf pi_u;		//control values
+RingBuf pi_e;		//deviation
 
+volatile int32_t omg_tgt = 0;		//fixed float 22.10[rad/ms]
+volatile int32_t omg_est = 0;		//fixed float 22.10[rad/ms]
+volatile int32_t adv_ang = 0;		//fixed float 22.10[rad]
+volatile int32_t rot_est = 0;		//fixed float 22.10[rad]
+
+/* for FMAC valuables */
+const int16_t x2_buffer[ADC_BUF] = {0, 0, 18, 0, 110, 0, 359, 0, 843, 0, 1560, 0, 2371, 0, 3025, 0, 3277, 0, 3025, 0, 2371, 0, 1560, 0, 843, 0, 359, 0, 110, 0, 18, 0, 0, 0};
+volatile uint16_t adc_datas[ADC_BUF] = {0u};
+volatile uint16_t y_buffer[2] = {0u};
+float current[2] = {0u};
+uint8_t dma_index = 0u;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,18 +84,10 @@ static void MX_TIM3_Init(void);
 static void MX_CORDIC_Init(void);
 static void MX_FMAC_Init(void);
 /* USER CODE BEGIN PFP */
-void startSequence(void);
-void stopAllPhase(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile double omega = 2.5;	//[deg/ms]
-const int16_t x2_buffer[ADC_BUF] = {0, 0, 18, 0, 110, 0, 359, 0, 843, 0, 1560, 0, 2371, 0, 3025, 0, 3277, 0, 3025, 0, 2371, 0, 1560, 0, 843, 0, 359, 0, 110, 0, 18, 0, 0, 0};
-volatile uint16_t adc_datas[ADC_BUF] = {0u};
-volatile uint16_t y_buffer[2] = {0u};
-float current[2] = {0u};
-uint8_t dma_index = 0u;
 /* USER CODE END 0 */
 
 /**
@@ -176,6 +182,10 @@ int main(void)
 	LL_OPAMP_Enable(OPAMP2);
 	LL_OPAMP_Enable(OPAMP3);
 
+	LL_COMP_Enable(COMP1);
+	LL_COMP_Enable(COMP2);
+	LL_COMP_Enable(COMP3);
+
 	LL_TIM_EnableCounter(TIM1);
 	LL_TIM_EnableARRPreload(TIM1);
 	LL_TIM_EnableAllOutputs(TIM1);
@@ -197,18 +207,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	//if(omega < 8){
-		//omega += 0.1f;
-		//LL_GPIO_SetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
-		//LL_mDelay(100);
-		//LL_GPIO_ResetOutputPin(STATUS_LED_GPIO_Port, STATUS_LED_Pin);
-		//LL_mDelay(100);
+	LL_GPIO_SetOutputPin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
+	LL_mDelay(100);
+	LL_GPIO_ResetOutputPin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
+	LL_mDelay(100);
+//	char str[10];
+	//sprintf(str, "%d\n" ,y_buffer[0]);
+	//for(uint8_t i=0;str[i] != '\0'; i++){
+		//ITM_SendChar(str[i]);
 	//}
-	char str[10];
-	sprintf(str, "%d\n" ,y_buffer[0]);
-	for(uint8_t i=0;str[i] != '\0'; i++){
-		ITM_SendChar(str[i]);
-	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -524,12 +531,16 @@ static void MX_COMP1_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /* COMP1 interrupt Init */
+  NVIC_SetPriority(COMP1_2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(COMP1_2_3_IRQn);
+
   /* USER CODE BEGIN COMP1_Init 1 */
 
   /* USER CODE END COMP1_Init 1 */
   COMP_InitStruct.InputPlus = LL_COMP_INPUT_PLUS_IO2;
   COMP_InitStruct.InputMinus = LL_COMP_INPUT_MINUS_IO1;
-  COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_NONE;
+  COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_70MV;
   COMP_InitStruct.OutputPolarity = LL_COMP_OUTPUTPOL_NONINVERTED;
   COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_TIM1_OC5_COMP1;
   LL_COMP_Init(COMP1, &COMP_InitStruct);
@@ -542,8 +553,11 @@ static void MX_COMP1_Init(void)
   {
     wait_loop_index--;
   }
+  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+  LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+  LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_21);
   LL_EXTI_DisableEvent_0_31(LL_EXTI_LINE_21);
-  LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_21);
+  LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_21);
   /* USER CODE BEGIN COMP1_Init 2 */
 
   /* USER CODE END COMP1_Init 2 */
@@ -581,12 +595,16 @@ static void MX_COMP2_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /* COMP2 interrupt Init */
+  NVIC_SetPriority(COMP1_2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(COMP1_2_3_IRQn);
+
   /* USER CODE BEGIN COMP2_Init 1 */
 
   /* USER CODE END COMP2_Init 1 */
   COMP_InitStruct.InputPlus = LL_COMP_INPUT_PLUS_IO1;
   COMP_InitStruct.InputMinus = LL_COMP_INPUT_MINUS_IO1;
-  COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_NONE;
+  COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_70MV;
   COMP_InitStruct.OutputPolarity = LL_COMP_OUTPUTPOL_NONINVERTED;
   COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_TIM1_OC5_COMP2;
   LL_COMP_Init(COMP2, &COMP_InitStruct);
@@ -599,8 +617,11 @@ static void MX_COMP2_Init(void)
   {
     wait_loop_index--;
   }
+  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+  LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+  LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_22);
   LL_EXTI_DisableEvent_0_31(LL_EXTI_LINE_22);
-  LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_22);
+  LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_22);
   /* USER CODE BEGIN COMP2_Init 2 */
 
   /* USER CODE END COMP2_Init 2 */
@@ -638,12 +659,16 @@ static void MX_COMP3_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /* COMP3 interrupt Init */
+  NVIC_SetPriority(COMP1_2_3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(COMP1_2_3_IRQn);
+
   /* USER CODE BEGIN COMP3_Init 1 */
 
   /* USER CODE END COMP3_Init 1 */
   COMP_InitStruct.InputPlus = LL_COMP_INPUT_PLUS_IO2;
   COMP_InitStruct.InputMinus = LL_COMP_INPUT_MINUS_IO2;
-  COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_NONE;
+  COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_70MV;
   COMP_InitStruct.OutputPolarity = LL_COMP_OUTPUTPOL_NONINVERTED;
   COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_TIM1_OC5_COMP3;
   LL_COMP_Init(COMP3, &COMP_InitStruct);
@@ -656,8 +681,11 @@ static void MX_COMP3_Init(void)
   {
     wait_loop_index--;
   }
+  LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+  LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+  LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_29);
   LL_EXTI_DisableEvent_0_31(LL_EXTI_LINE_29);
-  LL_EXTI_DisableIT_0_31(LL_EXTI_LINE_29);
+  LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_29);
   /* USER CODE BEGIN COMP3_Init 2 */
 
   /* USER CODE END COMP3_Init 2 */
@@ -1294,6 +1322,12 @@ static void MX_GPIO_Init(void)
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOD);
 
   /**/
+  LL_GPIO_ResetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
+
+  /**/
+  LL_GPIO_ResetOutputPin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
+
+  /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_2;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
@@ -1444,6 +1478,14 @@ static void MX_GPIO_Init(void)
   LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /**/
+  GPIO_InitStruct.Pin = LD_ID_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LD_ID_GPIO_Port, &GPIO_InitStruct);
+
+  /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_10;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
@@ -1472,6 +1514,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = LD_STATUS_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(LD_STATUS_GPIO_Port, &GPIO_InitStruct);
 
   /**/
   GPIO_InitStruct.Pin = LL_GPIO_PIN_3;
