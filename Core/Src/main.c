@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
 #include "stdlib.h"
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,6 +37,7 @@
 #define Y_SIZE 10
 #define X1_PAD 2
 #define Y_PAD 1
+#define I2C_ADD 0x47
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -56,6 +58,9 @@ volatile int32_t omg_tgt = 0;		//fixed float 22.10[rad/ms]
 volatile int32_t omg_est = 0;		//fixed float 22.10[rad/ms]
 volatile int32_t adv_ang = 0;		//fixed float 22.10[rad]
 volatile int32_t rot_est = 0;		//fixed float 22.10[rad]
+
+volatile int32_t omg_est2 = 0;		//fixed float 22.10[rad/ms]
+volatile int32_t rot_est2 = 0;		//fixed float 22.10[rad]
 
 /* for FMAC valuables */
 const int16_t x2_buffer[ADC_BUF] = {0, 0, 18, 0, 110, 0, 359, 0, 843, 0, 1560, 0, 2371, 0, 3025, 0, 3277, 0, 3025, 0, 2371, 0, 1560, 0, 843, 0, 359, 0, 110, 0, 18, 0, 0, 0};
@@ -83,6 +88,7 @@ static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_CORDIC_Init(void);
 static void MX_FMAC_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -99,6 +105,12 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+	pi_u.pnt = 0;
+	pi_e.pnt = 0;
+	for(int8_t i = 0; i<4;i++){
+		pi_u.data[i] = 0;
+		pi_e.data[i] = 0;
+	}
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -134,6 +146,7 @@ int main(void)
   MX_TIM3_Init();
   MX_CORDIC_Init();
   MX_FMAC_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 	LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_1);
 	LL_ADC_Enable(ADC1);
@@ -191,7 +204,22 @@ int main(void)
 	LL_TIM_EnableAllOutputs(TIM1);
 
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
 	LL_TIM_OC_SetCompareCH1(TIM1, 200);
+
+	LL_I2C_Enable(I2C3);
+
+	LL_I2C_HandleTransfer(I2C3, 0x47, LL_I2C_ADDRESSING_MODE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
+	while(!LL_I2C_IsActiveFlag_TXE(I2C3));
+	LL_I2C_TransmitData8(I2C3, 0x80);
+
+	LL_I2C_HandleTransfer(I2C3, 0x47, LL_I2C_ADDRESSING_MODE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+	while(LL_I2C_IsActiveFlag_RXNE(I2C3));
+	uint8_t i2c_buf = LL_I2C_ReceiveData8(I2C3);
+
+	if(i2c_buf & 0x04){
+		LL_GPIO_SetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
+	}
 
 	LL_mDelay(1000);
 
@@ -199,6 +227,10 @@ int main(void)
 
 	LL_mDelay(2000);
 
+	omg_tgt = (int32_t)(20.0*M_PI/100.0f * 1024.0f);
+  	omg_est2 = (int32_t)(5.0*M_PI/100.0f * 1024.0f);
+	omg_est = omg_est2;
+	adv_ang = 0;
 	LL_TIM_EnableCounter(TIM6);
 	LL_TIM_EnableIT_UPDATE(TIM6);
   /* USER CODE END 2 */
@@ -207,15 +239,32 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	LL_GPIO_SetOutputPin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
-	LL_mDelay(100);
-	LL_GPIO_ResetOutputPin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
-	LL_mDelay(100);
-//	char str[10];
-	//sprintf(str, "%d\n" ,y_buffer[0]);
-	//for(uint8_t i=0;str[i] != '\0'; i++){
-		//ITM_SendChar(str[i]);
-	//}
+	LL_mDelay(500);
+	LL_mDelay(500);
+	if(omg_est2 < omg_tgt*3/4){
+		omg_est2 += omg_tgt/4;
+	}
+
+	if((omg_est2-omg_est) < 50){
+		LL_GPIO_TogglePin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
+	}
+//	LL_I2C_HandleTransfer(I2C3, 0x47, LL_I2C_ADDRESSING_MODE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
+//	while(!LL_I2C_IsActiveFlag_TXE(I2C3));
+//	LL_I2C_TransmitData8(I2C3, 0x80);
+//
+//	LL_I2C_HandleTransfer(I2C3, 0x47, LL_I2C_ADDRESSING_MODE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+//	while(LL_I2C_IsActiveFlag_RXNE(I2C3));
+//	i2c_buf = LL_I2C_ReceiveData8(I2C3);
+//
+//	if(i2c_buf){
+//		LL_GPIO_SetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
+//	}
+
+	char str[10];
+	sprintf(str, "%d\n" , omg_est);
+	for(uint8_t i=0;str[i] != '\0'; i++){
+		ITM_SendChar(str[i]);
+	}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -542,7 +591,7 @@ static void MX_COMP1_Init(void)
   COMP_InitStruct.InputMinus = LL_COMP_INPUT_MINUS_IO1;
   COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_70MV;
   COMP_InitStruct.OutputPolarity = LL_COMP_OUTPUTPOL_NONINVERTED;
-  COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_TIM1_OC5_COMP1;
+  COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_NONE;
   LL_COMP_Init(COMP1, &COMP_InitStruct);
 
   /* Wait loop initialization and execution */
@@ -553,8 +602,8 @@ static void MX_COMP1_Init(void)
   {
     wait_loop_index--;
   }
+  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
   LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
-  LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
   LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_21);
   LL_EXTI_DisableEvent_0_31(LL_EXTI_LINE_21);
   LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_21);
@@ -606,7 +655,7 @@ static void MX_COMP2_Init(void)
   COMP_InitStruct.InputMinus = LL_COMP_INPUT_MINUS_IO1;
   COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_70MV;
   COMP_InitStruct.OutputPolarity = LL_COMP_OUTPUTPOL_NONINVERTED;
-  COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_TIM1_OC5_COMP2;
+  COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_NONE;
   LL_COMP_Init(COMP2, &COMP_InitStruct);
 
   /* Wait loop initialization and execution */
@@ -617,8 +666,8 @@ static void MX_COMP2_Init(void)
   {
     wait_loop_index--;
   }
+  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
   LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
-  LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
   LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_22);
   LL_EXTI_DisableEvent_0_31(LL_EXTI_LINE_22);
   LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_22);
@@ -670,7 +719,7 @@ static void MX_COMP3_Init(void)
   COMP_InitStruct.InputMinus = LL_COMP_INPUT_MINUS_IO2;
   COMP_InitStruct.InputHysteresis = LL_COMP_HYSTERESIS_70MV;
   COMP_InitStruct.OutputPolarity = LL_COMP_OUTPUTPOL_NONINVERTED;
-  COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_TIM1_OC5_COMP3;
+  COMP_InitStruct.OutputBlankingSource = LL_COMP_BLANKINGSRC_NONE;
   LL_COMP_Init(COMP3, &COMP_InitStruct);
 
   /* Wait loop initialization and execution */
@@ -681,8 +730,8 @@ static void MX_COMP3_Init(void)
   {
     wait_loop_index--;
   }
+  LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
   LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
-  LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
   LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_29);
   LL_EXTI_DisableEvent_0_31(LL_EXTI_LINE_29);
   LL_EXTI_EnableIT_0_31(LL_EXTI_LINE_29);
@@ -997,27 +1046,6 @@ static void MX_TIM1_Init(void)
   /* Peripheral clock enable */
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_TIM1);
 
-  LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOE);
-  /**TIM1 GPIO Configuration
-  PE14   ------> TIM1_BKIN2
-  PE15   ------> TIM1_BKIN
-  */
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_14;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_6;
-  LL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = LL_GPIO_PIN_15;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ALTERNATE;
-  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  GPIO_InitStruct.Alternate = LL_GPIO_AF_2;
-  LL_GPIO_Init(GPIOE, &GPIO_InitStruct);
-
   /* TIM1 interrupt Init */
   NVIC_SetPriority(TIM1_UP_TIM16_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(TIM1_UP_TIM16_IRQn);
@@ -1049,24 +1077,18 @@ static void MX_TIM1_Init(void)
   LL_TIM_OC_EnablePreload(TIM1, LL_TIM_CHANNEL_CH3);
   LL_TIM_OC_Init(TIM1, LL_TIM_CHANNEL_CH3, &TIM_OC_InitStruct);
   LL_TIM_OC_DisableFast(TIM1, LL_TIM_CHANNEL_CH3);
-  TIM_OC_InitStruct.OCMode = LL_TIM_OCMODE_FROZEN;
-  TIM_OC_InitStruct.CompareValue = 50;
-  LL_TIM_OC_Init(TIM1, LL_TIM_CHANNEL_CH5, &TIM_OC_InitStruct);
-  LL_TIM_OC_DisableFast(TIM1, LL_TIM_CHANNEL_CH5);
   LL_TIM_SetTriggerOutput(TIM1, LL_TIM_TRGO_RESET);
   LL_TIM_SetTriggerOutput2(TIM1, LL_TIM_TRGO2_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM1);
-  LL_TIM_SetBreakInputSourcePolarity(TIM1, LL_TIM_BREAK_INPUT_BKIN, LL_TIM_BKIN_SOURCE_BKIN, LL_TIM_BKIN_POLARITY_HIGH);
-  LL_TIM_SetBreakInputSourcePolarity(TIM1, LL_TIM_BREAK_INPUT_BKIN2, LL_TIM_BKIN_SOURCE_BKIN, LL_TIM_BKIN_POLARITY_HIGH);
-  TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_ENABLE;
-  TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_ENABLE;
+  TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_DISABLE;
+  TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_DISABLE;
   TIM_BDTRInitStruct.LockLevel = LL_TIM_LOCKLEVEL_OFF;
-  TIM_BDTRInitStruct.DeadTime = 16;
-  TIM_BDTRInitStruct.BreakState = LL_TIM_BREAK_ENABLE;
+  TIM_BDTRInitStruct.DeadTime = 128;
+  TIM_BDTRInitStruct.BreakState = LL_TIM_BREAK_DISABLE;
   TIM_BDTRInitStruct.BreakPolarity = LL_TIM_BREAK_POLARITY_HIGH;
   TIM_BDTRInitStruct.BreakFilter = LL_TIM_BREAK_FILTER_FDIV1;
   TIM_BDTRInitStruct.BreakAFMode = LL_TIM_BREAK_AFMODE_INPUT;
-  TIM_BDTRInitStruct.Break2State = LL_TIM_BREAK2_ENABLE;
+  TIM_BDTRInitStruct.Break2State = LL_TIM_BREAK2_DISABLE;
   TIM_BDTRInitStruct.Break2Polarity = LL_TIM_BREAK2_POLARITY_HIGH;
   TIM_BDTRInitStruct.Break2Filter = LL_TIM_BREAK2_FILTER_FDIV1;
   TIM_BDTRInitStruct.Break2AFMode = LL_TIM_BREAK_AFMODE_INPUT;
@@ -1200,6 +1222,43 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  LL_TIM_InitTypeDef TIM_InitStruct = {0};
+
+  /* Peripheral clock enable */
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM6);
+
+  /* TIM6 interrupt Init */
+  NVIC_SetPriority(TIM6_DAC_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM6_DAC_IRQn);
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  TIM_InitStruct.Prescaler = 4;
+  TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+  TIM_InitStruct.Autoreload = 999;
+  LL_TIM_Init(TIM6, &TIM_InitStruct);
+  LL_TIM_DisableARRPreload(TIM6);
+  LL_TIM_SetTriggerOutput(TIM6, LL_TIM_TRGO_RESET);
+  LL_TIM_DisableMasterSlaveMode(TIM6);
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1284,20 +1343,6 @@ static void MX_DMA_Init(void)
   /* DMA controller clock enable */
   LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMAMUX1);
   LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
-
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  NVIC_SetPriority(DMA1_Channel1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA1_Channel2_IRQn interrupt configuration */
-  NVIC_SetPriority(DMA1_Channel2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-  /* DMA1_Channel3_IRQn interrupt configuration */
-  NVIC_SetPriority(DMA1_Channel3_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA1_Channel3_IRQn);
-  /* DMA1_Channel4_IRQn interrupt configuration */
-  NVIC_SetPriority(DMA1_Channel4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(DMA1_Channel4_IRQn);
 
 }
 
