@@ -52,6 +52,7 @@ extern int32_t rot_est;
 extern uint16_t adc_datas[2];
 extern int32_t omg_est2;
 extern int32_t rot_est2;
+extern uint8_t detect_flag;
 
 volatile int32_t pre_ctl;
 
@@ -231,15 +232,20 @@ void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
 	//rotate120Deg(&rot_est2, &pre_ctl, omg_tgt, omg_est2, 0, &pi_e, &pi_u, &wake_up);	
-	forceRotate(rot_est2,100);
-	//rotate120Deg(&rot_est2, &pre_ctl, omg_tgt, omg_est2, adv_ang, &pi_e, &pi_u, &wake_up);
+	if(!detect_flag<90){
+		forceRotate(rot_est2,100);
+		rot_est=rot_est2;
+	}else{
+		rotate120Deg(&rot_est, &pre_ctl, omg_tgt, omg_est, adv_ang, &pi_e, &pi_u, &wake_up);
+	}
+
 	rot_est2 += (omg_est2*FREQ_T)>>10;
 	rot_est2 += rot_est2 < RAD0 ? RAD360 : RAD0;
 	rot_est2 -= rot_est2 > RAD360 ? RAD360 : RAD0;
 
-	rot_est += (omg_est2*FREQ_T)>>10;
-	rot_est += rot_est < RAD0 ? RAD360 : RAD0;
-	rot_est -= rot_est > RAD360 ? RAD360 : RAD0;
+	//rot_est += (omg_est2*FREQ_T)>>10;
+	//rot_est += rot_est < RAD0 ? RAD360 : RAD0;
+	//rot_est -= rot_est > RAD360 ? RAD360 : RAD0;
   /* USER CODE END TIM6_DAC_IRQn 0 */
 
   /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
@@ -253,18 +259,26 @@ void TIM6_DAC_IRQHandler(void)
 void COMP1_2_3_IRQHandler(void)
 {
   /* USER CODE BEGIN COMP1_2_3_IRQn 0 */
+	if(omg_est==0){
+		omg_est=1;
+	}
+
+	if(detect_flag<100){
+		detect_flag++;
+	}
+
   if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_21)){
 	LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_21);
-	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+	//LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
 
 	if(rot_est > RAD90 && rot_est < RAD270){
-		omg_est += (((rot_est-RAD90)<<10)/((rot_est-RAD90)*abs(omg_est) + RAD60*omg_est))<<10;
+		omg_est += ((rot_est-RAD180)*omg_est/(RAD60-rot_est+RAD180));
 		rot_est = RAD180;
 	}else{
 		if(rot_est > RAD330){
-			omg_est += (((rot_est-RAD360)<<10)/((rot_est-RAD360)*abs(omg_est) + RAD60*omg_est))<<10;
+			omg_est += ((rot_est-RAD360)*omg_est/(RAD60-rot_est+RAD360));
 		}else{
-			omg_est += ((rot_est<<10)/(rot_est*abs(omg_est) + RAD60*omg_est))<<10;
+			omg_est += (rot_est*omg_est/(RAD60-rot_est));
 		}
 		rot_est = RAD0;
 	}
@@ -272,23 +286,27 @@ void COMP1_2_3_IRQHandler(void)
 
   if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_22)){
 	LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_22);
-	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+	//LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
 
 	if(rot_est > RAD30 && rot_est < RAD210){
-		omg_est += (((rot_est-RAD120)<<10)/((rot_est-RAD120)*abs(omg_est) + RAD60*omg_est))<<10;
+		omg_est += ((rot_est-RAD120)*omg_est/(RAD60-rot_est+RAD120));
+		rot_est=RAD120;
 	}else{
-		omg_est += (((rot_est-RAD300)<<10)/((rot_est-RAD300)*abs(omg_est) + RAD60*omg_est))<<10;
+		omg_est += ((rot_est-RAD300)*omg_est/(RAD60-rot_est+RAD300));
+		rot_est=RAD300;
 	}
   }
 
   if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_29)){
 	LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_29);
-	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+	//LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
 
 	if(rot_est > RAD150 && rot_est < RAD330){
-		omg_est += (((rot_est-RAD240)<<10)/((rot_est-RAD240)*abs(omg_est) + RAD60*omg_est))<<10;
+		omg_est += ((rot_est-RAD240)*omg_est/(RAD60-rot_est+RAD240));
+		rot_est=RAD240;
 	}else{
-		omg_est += (((rot_est-RAD60)<<10)/((rot_est-RAD60)*abs(omg_est) + RAD60*omg_est))<<10;
+		omg_est += (((rot_est-RAD60)*omg_est)/(RAD60-rot_est+RAD60));
+		rot_est=RAD60;
 	}
   }
   /* USER CODE END COMP1_2_3_IRQn 0 */

@@ -68,6 +68,7 @@ volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[2] = {0u};
 float current[2] = {0u};
 uint8_t dma_index = 0u;
+uint8_t detect_flag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -231,6 +232,7 @@ int main(void)
   	omg_est2 = (int32_t)(5.0*M_PI/100.0f * 1024.0f);
 	omg_est = omg_est2;
 	adv_ang = 0;
+	detect_flag = 0;
 	LL_TIM_EnableCounter(TIM6);
 	LL_TIM_EnableIT_UPDATE(TIM6);
   /* USER CODE END 2 */
