@@ -68,7 +68,7 @@ volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[2] = {0u};
 float current[2] = {0u};
 uint8_t dma_index = 0u;
-uint8_t detect_flag = 0;
+uint32_t detect_flag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -109,7 +109,7 @@ int main(void)
 	pi_u.pnt = 0;
 	pi_e.pnt = 0;
 	for(int8_t i = 0; i<4;i++){
-		pi_u.data[i] = 0;
+		pi_u.data[i] = 100<<10;
 		pi_e.data[i] = 0;
 	}
   /* USER CODE END 1 */
@@ -231,7 +231,7 @@ int main(void)
 	omg_tgt = (int32_t)(20.0*M_PI/100.0f * 1024.0f);
   	omg_est2 = (int32_t)(5.0*M_PI/100.0f * 1024.0f);
 	omg_est = omg_est2;
-	adv_ang = 0;
+	adv_ang = (int32_t)(5.0*M_PI/180.0f * 1024);
 	detect_flag = 0;
 	LL_TIM_EnableCounter(TIM6);
 	LL_TIM_EnableIT_UPDATE(TIM6);
@@ -262,7 +262,7 @@ int main(void)
 //		LL_GPIO_SetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
 //	}
 
-	char str[10];
+	char str[16];
 	sprintf(str, "%d\n" , omg_est);
 	for(uint8_t i=0;str[i] != '\0'; i++){
 		ITM_SendChar(str[i]);

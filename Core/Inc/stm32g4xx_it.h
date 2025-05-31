@@ -43,7 +43,7 @@
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
 #define KP (int32_t)(400 * 1024)		//0.5
-#define KI (int32_t)(0.01* 1024)		//0.002
+#define KI (int32_t)(1* 1024)		//0.002
 
 #define FREQ_T (int32_t)(1024/32)		//T[ms] (32kHz)
 
@@ -90,14 +90,14 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 	//PI control section
 	pi_e_->data[pi_e_->pnt] = omg_tgt_ - omg_est_;
-	pi_u_->data[pi_u_->pnt] = (KP*pi_e_->data[(pi_e_->pnt+0x03)&0x03]) + ((KP+KI)*pi_e_->data[pi_e_->pnt]);
-	pi_u_->data[pi_u_->pnt] >>= 10;
-	pi_u_->data[pi_u_->pnt] += (2*pi_u_->data[(pi_u_->pnt+0x03)&0x03]) - (pi_u_->data[(pi_u_->pnt+0x02)&0x03]);
-	//pi_u_->data[pi_u_->pnt] = KP*pi_e_->data[pi_e_->pnt];
+	//pi_u_->data[pi_u_->pnt] = ((KP+KI)*pi_e_->data[pi_e_->pnt]) - (KP*pi_e_->data[(pi_e_->pnt+0x03)&0x03]);
 	//pi_u_->data[pi_u_->pnt] >>= 10;
+	//pi_u_->data[pi_u_->pnt] += pi_u_->data[(pi_u_->pnt+0x03)&0x03];
+	pi_u_->data[pi_u_->pnt] = KP*pi_e_->data[pi_e_->pnt];
+	pi_u_->data[pi_u_->pnt] >>= 10;
 
-	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > 200<<10 ? 200<<10 : pi_u_->data[pi_u_->pnt];
-	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] < 0 ? 0 : pi_u_->data[pi_u_->pnt];
+	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > 100<<10 ? 100<<10 : pi_u_->data[pi_u_->pnt];
+	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] < 30 ? 30 : pi_u_->data[pi_u_->pnt];
 
 	if(ctl_ang >= RAD30 && ctl_ang < RAD90){
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
@@ -113,6 +113,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 		if(*wake_up_){
 			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD30 || *pre_ctl_ >= RAD90){
 			*wake_up_ = 1;
@@ -131,6 +132,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 		if(*wake_up_){
 			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD90 || *pre_ctl_ >= RAD150){
 			*wake_up_ = 1;
@@ -149,6 +151,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 		if(*wake_up_){
 			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD150 || *pre_ctl_ >= RAD210){
 			*wake_up_ = 1;
@@ -167,6 +170,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 		if(*wake_up_){
 			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD210 || *pre_ctl_ >= RAD270){
 			*wake_up_ = 1;
@@ -185,6 +189,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 		if(*wake_up_){
 			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < 270 || *pre_ctl_ >= RAD330){
 			*wake_up_ = 1;
@@ -203,6 +208,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 
 		if(*wake_up_){
 			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ <= RAD330 && *pre_ctl_ > RAD30){
 			*wake_up_ = 1;
