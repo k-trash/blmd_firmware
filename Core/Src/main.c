@@ -53,9 +53,9 @@ FDCAN_HandleTypeDef hfdcan1;
 /* for PI control valuables */
 RingBuf pi_u;		//control values
 RingBuf pi_e;		//deviation
+RingBuf omg_est;	//omg estimate
 
 volatile int32_t omg_tgt = 0;		//fixed float 22.10[rad/ms]
-volatile int32_t omg_est = 0;		//fixed float 22.10[rad/ms]
 volatile int32_t adv_ang = 0;		//fixed float 22.10[rad]
 volatile int32_t rot_est = 0;		//fixed float 22.10[rad]
 
@@ -228,10 +228,9 @@ int main(void)
 
 	LL_mDelay(2000);
 
-	omg_tgt = (int32_t)(20.0*M_PI/100.0f * 1024.0f);
+	omg_tgt = (int32_t)(45.0*M_PI/100.0f * 1024.0f);
   	omg_est2 = (int32_t)(5.0*M_PI/100.0f * 1024.0f);
-	omg_est = omg_est2;
-	adv_ang = (int32_t)(5.0*M_PI/180.0f * 1024);
+	adv_ang = (int32_t)(0.0*M_PI/180.0f * 1024);
 	detect_flag = 0;
 	LL_TIM_EnableCounter(TIM6);
 	LL_TIM_EnableIT_UPDATE(TIM6);
@@ -241,13 +240,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	LL_mDelay(500);
-	LL_mDelay(500);
-	if(omg_est2 < omg_tgt*3/4){
-		omg_est2 += omg_tgt/4;
+	LL_mDelay(300);
+	if(omg_est2 <= omg_tgt*5/6){
+		omg_est2 += omg_tgt/10;
 	}
 
-	if((omg_est2-omg_est) < 50){
+	if((omg_tgt-omg_est.data[(omg_est.pnt+3)&0x03]) < 50){
 		LL_GPIO_TogglePin(LD_STATUS_GPIO_Port, LD_STATUS_Pin);
 	}
 //	LL_I2C_HandleTransfer(I2C3, 0x47, LL_I2C_ADDRESSING_MODE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
@@ -263,7 +261,7 @@ int main(void)
 //	}
 
 	char str[16];
-	sprintf(str, "%d\n" , omg_est);
+	sprintf(str, "%d\n" , (int)(omg_est.data[0]+omg_est.data[1]+omg_est.data[2]+omg_est.data[3])>>2);
 	for(uint8_t i=0;str[i] != '\0'; i++){
 		ITM_SendChar(str[i]);
 	}

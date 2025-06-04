@@ -42,7 +42,7 @@
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
-#define KP (int32_t)(400 * 1024)		//0.5
+#define KP (int32_t)(0.005 * 1024)		//0.5
 #define KI (int32_t)(1* 1024)		//0.002
 
 #define FREQ_T (int32_t)(1024/32)		//T[ms] (32kHz)
@@ -78,12 +78,14 @@ void COMP1_2_3_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 void rotateSin(float theta_, uint16_t power_);
 
-static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t omg_tgt_, int32_t omg_est_, int32_t adv_ang_, RingBuf *pi_e_, RingBuf *pi_u_, uint8_t *wake_up_){
-	(*rot_est_) += (omg_est_*FREQ_T) >> 10;
-	int32_t ctl_ang = (*rot_est_) + adv_ang_;
-
+static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t omg_tgt_, int32_t omg_est_, int32_t adv_ang_, RingBuf *pi_e_, RingBuf *pi_u_, uint8_t *wake_up_, uint8_t *next_flag_){
+	if(next_flag_){
+		(*rot_est_) += (omg_est_*FREQ_T) >> 10;
+	}
 	*rot_est_ += *rot_est_ < RAD0 ? RAD360 : RAD0;
 	*rot_est_ -= *rot_est_ > RAD360 ? RAD360 : RAD0;
+
+	int32_t ctl_ang = (*rot_est_) + adv_ang_;
 
 	ctl_ang += ctl_ang < RAD0 ? RAD360 : RAD0;
 	ctl_ang -= ctl_ang > RAD360 ? RAD360 : RAD0;
@@ -95,9 +97,12 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 	//pi_u_->data[pi_u_->pnt] += pi_u_->data[(pi_u_->pnt+0x03)&0x03];
 	pi_u_->data[pi_u_->pnt] = KP*pi_e_->data[pi_e_->pnt];
 	pi_u_->data[pi_u_->pnt] >>= 10;
+	pi_u_->data[pi_u_->pnt] += pi_u_->data[(pi_u_->pnt+3)&0x03];
+	
+//	pi_u_->data[pi_u_->pnt] = 100<<10;
 
-	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > 100<<10 ? 100<<10 : pi_u_->data[pi_u_->pnt];
-	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] < 30 ? 30 : pi_u_->data[pi_u_->pnt];
+	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > (900<<10) ? (900<<10) : pi_u_->data[pi_u_->pnt];
+	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] < (30<<10) ? (30<<10) : pi_u_->data[pi_u_->pnt];
 
 	if(ctl_ang >= RAD30 && ctl_ang < RAD90){
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
@@ -112,19 +117,23 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
 
 		if(*wake_up_){
-			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
-			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD30 || *pre_ctl_ >= RAD90){
 			*wake_up_ = 1;
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
 		}
 	}else if(ctl_ang >= RAD90 && ctl_ang < RAD150){
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
 		LL_TIM_OC_SetCompareCH1(TIM1, pi_u_->data[pi_u_->pnt]>>10);
 
-		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
 
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
@@ -135,6 +144,10 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD90 || *pre_ctl_ >= RAD150){
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
 			*wake_up_ = 1;
 		}
 	}else if(ctl_ang >= RAD150 && ctl_ang < RAD210){
@@ -150,10 +163,14 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 		LL_TIM_OC_SetCompareCH3(TIM1, 0);
 
 		if(*wake_up_){
-			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
-			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD150 || *pre_ctl_ >= RAD210){
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
 			*wake_up_ = 1;
 		}
 	}else if(ctl_ang >= RAD210 && ctl_ang < RAD270){
@@ -169,11 +186,15 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
 
 		if(*wake_up_){
-			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
-			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < RAD210 || *pre_ctl_ >= RAD270){
 			*wake_up_ = 1;
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
 		}
 	}else if(ctl_ang >= RAD270 && ctl_ang < RAD330){
 		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
@@ -193,6 +214,10 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ < 270 || *pre_ctl_ >= RAD330){
 			*wake_up_ = 1;
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
 		}
 	}else{
 		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
@@ -207,12 +232,20 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 		LL_TIM_OC_SetCompareCH3(TIM1, pi_u_->data[pi_u_->pnt]>>10);
 
 		if(*wake_up_){
-			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
-			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
 			*wake_up_ = 0;
 		}else if(*pre_ctl_ <= RAD330 && *pre_ctl_ > RAD30){
 			*wake_up_ = 1;
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
 		}
+	}
+
+	if(wake_up_==1){
+		next_flag_=0;
 	}
 
 	//update ring buffer pointer
