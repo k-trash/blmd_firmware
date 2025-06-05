@@ -22,16 +22,17 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "math.h"
+#include "stdlib.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
-
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -41,7 +42,25 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+extern RingBuf pi_u;		//for pi control
+extern RingBuf pi_e;		//for pi control
 
+extern RingBuf omg_est;
+extern int32_t omg_tgt;
+extern int32_t adv_ang;
+extern int32_t rot_est;
+extern int8_t rot_direct;
+extern uint16_t adc_datas[2];
+extern int32_t omg_est2;
+extern int32_t rot_est2;
+extern uint32_t detect_flag;
+volatile uint8_t next_flag = 0;
+
+volatile uint32_t pre_ctl;
+volatile uint32_t pre_tim6_ccr;
+volatile uint32_t tim6_cnt;
+
+volatile uint8_t wake_up = 0; 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -51,12 +70,10 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern double omega;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern DMA_HandleTypeDef hdma_adc2;
-extern FDCAN_HandleTypeDef hfdcan1;
+
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -200,87 +217,16 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles DMA1 channel1 global interrupt.
+  * @brief This function handles TIM1 update interrupt and TIM16 global interrupt.
   */
-void DMA1_Channel1_IRQHandler(void)
+void TIM1_UP_TIM16_IRQHandler(void)
 {
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
+  /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
 
-  /* USER CODE END DMA1_Channel1_IRQn 0 */
+  /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 
-  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel2 global interrupt.
-  */
-void DMA1_Channel2_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel2_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_adc2);
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel2_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel3 global interrupt.
-  */
-void DMA1_Channel3_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel3_IRQn 0 */
-
-  /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel3_IRQn 1 */
-}
-
-/**
-  * @brief This function handles DMA1 channel4 global interrupt.
-  */
-void DMA1_Channel4_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel4_IRQn 0 */
-
-  /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel4_IRQn 1 */
-}
-
-/**
-  * @brief This function handles FDCAN1 interrupt 0.
-  */
-void FDCAN1_IT0_IRQHandler(void)
-{
-  /* USER CODE BEGIN FDCAN1_IT0_IRQn 0 */
-
-  /* USER CODE END FDCAN1_IT0_IRQn 0 */
-  HAL_FDCAN_IRQHandler(&hfdcan1);
-  /* USER CODE BEGIN FDCAN1_IT0_IRQn 1 */
-
-  /* USER CODE END FDCAN1_IT0_IRQn 1 */
-}
-
-/**
-  * @brief This function handles TIM1 trigger and commutation interrupts and TIM17 global interrupt.
-  */
-void TIM1_TRG_COM_TIM17_IRQHandler(void)
-{
-  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 0 */
-
-  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 0 */
-
-  /* USER CODE BEGIN TIM1_TRG_COM_TIM17_IRQn 1 */
-
-  /* USER CODE END TIM1_TRG_COM_TIM17_IRQn 1 */
+  /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
 }
 
 /**
@@ -289,93 +235,246 @@ void TIM1_TRG_COM_TIM17_IRQHandler(void)
 void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
-	static double theta = 0.0f;
-	static uint8_t state = 0u;
+	//rotate120Deg(&rot_est2, &pre_ctl, omg_tgt, omg_est2, 0, &pi_e, &pi_u, &wake_up);	
+	if(detect_flag<50){
+		forceRotate(rot_est2,100);
+		if(!rot_direct){
+			rot_est2 += (omg_est2*FREQ_T)>>10;
+		}else{
+			rot_est2 -= (omg_est2*FREQ_T)>>10;
+		}
+		rot_est2 += rot_est2 < RAD0 ? RAD360 : RAD0;
+		rot_est2 -= rot_est2 > RAD360 ? RAD360 : RAD0;
+
+		rot_est = rot_est2;
+		LL_GPIO_ResetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
+	}else{
+		int32_t omg = (omg_est.data[0]+omg_est.data[1]+omg_est.data[2]+omg_est.data[3])>>2;
+		LL_GPIO_SetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
+		rotate120Deg(&rot_est, &pre_ctl, omg_tgt, omg, adv_ang, &pi_e, &pi_u, &wake_up, &next_flag, rot_direct);
+	}
+
+	tim6_cnt++;
 
   /* USER CODE END TIM6_DAC_IRQn 0 */
 
   /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
-	if(LL_TIM_IsActiveFlag_UPDATE(TIM6)){
-		theta += omega;
-		if(theta > 360.0f){
-			theta -= 360.0f;
-		}
-
-		switch(state){
-			case 0:		//0~60
-				if(theta > 60.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 80);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
-					state++;
-				}
-				break;
-			case 1:		//60~120
-				if(theta > 120.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 0);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
-					state++;
-				}
-				break;
-			case 2:		//120~180
-				if(theta > 180.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 80);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
-					state++;
-				}
-				break;
-			case 3:		//180~240
-				if(theta > 240.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					LL_TIM_OC_SetCompareCH1(TIM1, 0);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					//LL_TIM_OC_SetCompareCH3(TIM1, 0);
-					state++;
-				}
-				break;
-			case 4:		//240~300;
-				if(theta > 300.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-					LL_TIM_OC_SetCompareCH3(TIM1, 80);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					//LL_TIM_OC_SetCompareCH2(TIM1, 0);
-					state++;
-				}
-				break;
-			case 5:		//300~360;
-				if(theta < 300.0f){
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-					LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-					LL_TIM_OC_SetCompareCH2(TIM1, 0);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-					LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-					//LL_TIM_OC_SetCompareCH1(TIM1, 0);
-					state = 0u;
-				}
-				break;
-		}
-
-		LL_TIM_ClearFlag_UPDATE(TIM6);
-	}
-
+	LL_TIM_ClearFlag_UPDATE(TIM6);
   /* USER CODE END TIM6_DAC_IRQn 1 */
 }
 
+/**
+  * @brief This function handles COMP1, COMP2 and COMP3 interrupts through EXTI lines 21, 22 and 29.
+  */
+void COMP1_2_3_IRQHandler(void)
+{
+  /* USER CODE BEGIN COMP1_2_3_IRQn 0 */
+	int32_t cnt_tmp;
+	int32_t omg_tmp;
+
+
+  	if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_21)){			//C
+		LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_21);
+		LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+		LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+
+		if(rot_est > RAD150 && rot_est < RAD330){
+			rot_est=RAD240;
+		}else{
+			rot_est=RAD60;
+		}
+	}
+
+	if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_22)){			//B	
+		LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_22);
+		LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+		LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+
+		if(rot_est > RAD30 && rot_est < RAD210){
+			rot_est=RAD120;
+		}else{
+			rot_est=RAD300;
+		}
+	}
+
+	if(LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINE_29)){			//A		
+		LL_EXTI_ClearFlag_0_31(LL_EXTI_LINE_29);
+		LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+		LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+
+		if(rot_est > RAD90 && rot_est < RAD270){
+			rot_est = RAD180;
+		}else{
+			rot_est = RAD0;
+		}
+	}
+
+	if(tim6_cnt>20){
+		cnt_tmp = (1023+pre_tim6_ccr-TIM6->CNT);
+		omg_tmp = ((tim6_cnt-1)<<10) + cnt_tmp + (cnt_tmp>>6);
+		omg_est.data[omg_est.pnt] = (RAD60<<10)/((omg_tmp*FREQ_T)>>10);
+
+		pre_tim6_ccr = TIM6->CNT;
+		tim6_cnt = 0;
+		next_flag = 1;
+		omg_est.pnt = (omg_est.pnt+1)&0x03;
+
+		if(detect_flag<10000){
+			detect_flag++;
+		}
+	}
+  /* USER CODE END COMP1_2_3_IRQn 0 */
+
+  /* USER CODE BEGIN COMP1_2_3_IRQn 1 */
+
+  /* USER CODE END COMP1_2_3_IRQn 1 */
+}
+
 /* USER CODE BEGIN 1 */
+void forceRotate(int32_t theta_, uint16_t power_){
+	static int32_t pre_theta = 0u;
+	if(theta_ > RAD30 && theta_ < RAD90){
+		if(pre_theta <= RAD30 || pre_theta >= RAD90){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+		}
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, power_);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+	}else if(theta_ >= RAD90 && theta_ < RAD150){
+		if(pre_theta < RAD90 || pre_theta >= RAD150){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, 0);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, power_);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+	}else if(theta_ >= RAD150 && theta_ < RAD210){
+		if(pre_theta < RAD150 || pre_theta >= RAD210){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, power_);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, 0);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+	}else if(theta_ >= RAD210 && theta_<270){
+		if(pre_theta < RAD210 || pre_theta >= RAD270){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+		}
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, power_);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+	}else if(theta_ >= RAD270 && theta_ < RAD330){
+		if(pre_theta < RAD270 || pre_theta >= RAD330){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, power_);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+	}else{
+		if(pre_theta < RAD330 && pre_theta >= RAD30){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
+
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, power_);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+	}
+
+	pre_theta = theta_;
+}
+
+
+void rotateSin(float theta_, uint16_t power_){
+	float pwm[3];
+	int32_t theta = theta_>180.0f ? (int32_t)((theta_-360.0f)/180.0f*2147483648.0f) : (int32_t)((theta_)/180.0f*2147483648.0f);
+
+	LL_CORDIC_SetFunction(CORDIC, LL_CORDIC_FUNCTION_SINE);
+	LL_CORDIC_WriteData(CORDIC, (uint32_t)theta);
+	LL_CORDIC_WriteData(CORDIC, 0x7FFFFFFF);	
+
+	pwm[1] = sin((theta_+120.0f) * M_PI / 180.0f) + 1.0f;
+	pwm[2] = sin((theta_+240.0f) * M_PI / 180.0f) + 1.0f;
+
+	LL_TIM_OC_SetCompareCH2(TIM1, (uint16_t)(power_*pwm[1])>>1);
+	LL_TIM_OC_SetCompareCH3(TIM1, (uint16_t)(power_*pwm[2])>>1);
+
+	while(!LL_CORDIC_IsActiveFlag_RRDY(CORDIC));
+	int32_t tmp = LL_CORDIC_ReadData(CORDIC);
+	uint16_t value = (((tmp >> 10)*power_)>>22) + (power_>>1);
+	LL_CORDIC_ReadData(CORDIC);
+	LL_TIM_OC_SetCompareCH1(TIM1, value);
+
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH1N);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH2N);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3);
+	LL_TIM_CC_EnableChannel(TIM1,LL_TIM_CHANNEL_CH3N);
+
+	
+}
 
 /* USER CODE END 1 */
