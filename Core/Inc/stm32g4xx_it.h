@@ -28,6 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "math.h"
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -78,9 +79,13 @@ void COMP1_2_3_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 void rotateSin(float theta_, uint16_t power_);
 
-static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t omg_tgt_, int32_t omg_est_, int32_t adv_ang_, RingBuf *pi_e_, RingBuf *pi_u_, uint8_t *wake_up_, uint8_t *next_flag_){
-	if(next_flag_){
-		(*rot_est_) += (omg_est_*FREQ_T) >> 10;
+static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t omg_tgt_, int32_t omg_est_, int32_t adv_ang_, RingBuf *pi_e_, RingBuf *pi_u_, uint8_t *wake_up_, uint8_t *next_flag_, uint8_t rot_direct_){
+	if(*next_flag_){
+		if(!rot_direct_){
+			(*rot_est_) += (omg_est_*FREQ_T) >> 10;
+		}else{
+			(*rot_est_) -= (omg_est_*FREQ_T) >> 10;
+		}
 	}
 	*rot_est_ += *rot_est_ < RAD0 ? RAD360 : RAD0;
 	*rot_est_ -= *rot_est_ > RAD360 ? RAD360 : RAD0;
@@ -101,7 +106,7 @@ static inline void rotate120Deg(int32_t *rot_est_, int32_t *pre_ctl_, int32_t om
 	
 //	pi_u_->data[pi_u_->pnt] = 100<<10;
 
-	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > (900<<10) ? (900<<10) : pi_u_->data[pi_u_->pnt];
+	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] > (950<<10) ? (950<<10) : pi_u_->data[pi_u_->pnt];
 	pi_u_->data[pi_u_->pnt] = pi_u_->data[pi_u_->pnt] < (30<<10) ? (30<<10) : pi_u_->data[pi_u_->pnt];
 
 	if(ctl_ang >= RAD30 && ctl_ang < RAD90){

@@ -45,19 +45,20 @@
 extern RingBuf pi_u;		//for pi control
 extern RingBuf pi_e;		//for pi control
 
-extern int32_t omg_tgt;
 extern RingBuf omg_est;
+extern int32_t omg_tgt;
 extern int32_t adv_ang;
 extern int32_t rot_est;
+extern int8_t rot_direct;
 extern uint16_t adc_datas[2];
 extern int32_t omg_est2;
 extern int32_t rot_est2;
 extern uint32_t detect_flag;
 volatile uint8_t next_flag = 0;
 
-volatile int32_t pre_ctl;
-volatile int32_t pre_tim6_ccr;
-volatile int32_t tim6_cnt;
+volatile uint32_t pre_ctl;
+volatile uint32_t pre_tim6_ccr;
+volatile uint32_t tim6_cnt;
 
 volatile uint8_t wake_up = 0; 
 /* USER CODE END PV */
@@ -235,9 +236,13 @@ void TIM6_DAC_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
 	//rotate120Deg(&rot_est2, &pre_ctl, omg_tgt, omg_est2, 0, &pi_e, &pi_u, &wake_up);	
-	if(detect_flag<250){
+	if(detect_flag<50){
 		forceRotate(rot_est2,100);
-		rot_est2 += (omg_est2*FREQ_T)>>10;
+		if(!rot_direct){
+			rot_est2 += (omg_est2*FREQ_T)>>10;
+		}else{
+			rot_est2 -= (omg_est2*FREQ_T)>>10;
+		}
 		rot_est2 += rot_est2 < RAD0 ? RAD360 : RAD0;
 		rot_est2 -= rot_est2 > RAD360 ? RAD360 : RAD0;
 
@@ -246,7 +251,7 @@ void TIM6_DAC_IRQHandler(void)
 	}else{
 		int32_t omg = (omg_est.data[0]+omg_est.data[1]+omg_est.data[2]+omg_est.data[3])>>2;
 		LL_GPIO_SetOutputPin(LD_ID_GPIO_Port, LD_ID_Pin);
-		rotate120Deg(&rot_est, &pre_ctl, omg_tgt, omg, adv_ang, &pi_e, &pi_u, &wake_up, &next_flag);
+		rotate120Deg(&rot_est, &pre_ctl, omg_tgt, omg, adv_ang, &pi_e, &pi_u, &wake_up, &next_flag, rot_direct);
 	}
 
 	tim6_cnt++;
@@ -317,8 +322,6 @@ void COMP1_2_3_IRQHandler(void)
 		if(detect_flag<10000){
 			detect_flag++;
 		}
-
-		//rot_est+=RAD60;
 	}
   /* USER CODE END COMP1_2_3_IRQn 0 */
 
@@ -329,113 +332,118 @@ void COMP1_2_3_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 void forceRotate(int32_t theta_, uint16_t power_){
-	static uint8_t state = 0u;
-	switch(state){
-		case 0:		//330~30
-			if(theta_ > RAD30){
-				LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+	static int32_t pre_theta = 0u;
+	if(theta_ > RAD30 && theta_ < RAD90){
+		if(pre_theta <= RAD30 || pre_theta >= RAD90){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+		}
 
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-				LL_TIM_OC_SetCompareCH1(TIM1, power_);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-				state++;
-			}
-			break;
-		case 1:		//60~120
-			if(theta_ > RAD90){
-				LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, power_);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+	}else if(theta_ >= RAD90 && theta_ < RAD150){
+		if(pre_theta < RAD90 || pre_theta >= RAD150){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
 
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-				LL_TIM_OC_SetCompareCH3(TIM1, 0);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-				state++;
-			}
-			break;
-		case 2:		//120~180
-			if(theta_ > RAD150){
-				LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, 0);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, power_);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+	}else if(theta_ >= RAD150 && theta_ < RAD210){
+		if(pre_theta < RAD150 || pre_theta >= RAD210){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
 
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-				LL_TIM_OC_SetCompareCH2(TIM1, power_);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-				state++;
-			}
-			break;
-		case 3:		//180~240
-			if(theta_ > RAD210){
-				LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, power_);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, 0);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+	}else if(theta_ >= RAD210 && theta_<270){
+		if(pre_theta < RAD210 || pre_theta >= RAD270){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+		}
 
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-				LL_TIM_OC_SetCompareCH1(TIM1, 0);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-				state++;
-			}
-			break;
-		case 4:		//240~300;
-			if(theta_ > RAD270){
-				LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, power_);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+	}else if(theta_ >= RAD270 && theta_ < RAD330){
+		if(pre_theta < RAD270 || pre_theta >= RAD330){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
 
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
-				LL_TIM_OC_SetCompareCH3(TIM1, power_);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-				state++;
-			}
-			break;
-		case 5:		//300~360;
-			if(theta_ > RAD330){
-				LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
-				LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
-				LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, power_);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+		LL_TIM_OC_SetCompareCH1(TIM1, 0);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+	}else{
+		if(pre_theta < RAD330 && pre_theta >= RAD30){
+			LL_EXTI_EnableRisingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_EnableFallingTrig_0_31(LL_EXTI_LINE_29);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+			LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+			LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+		}
 
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
-				LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
-				LL_TIM_OC_SetCompareCH2(TIM1, 0);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-				LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
-			}
-			if(theta_ < RAD270){
-				state = 0u;
-			}
-			break;
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH2N);
+		LL_TIM_OC_SetCompareCH2(TIM1, 0);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3);
+		LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH3N);
+		LL_TIM_OC_SetCompareCH3(TIM1, power_);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1);
+		LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
 	}
+
+	pre_theta = theta_;
 }
 
 

@@ -62,6 +62,8 @@ volatile int32_t rot_est = 0;		//fixed float 22.10[rad]
 volatile int32_t omg_est2 = 0;		//fixed float 22.10[rad/ms]
 volatile int32_t rot_est2 = 0;		//fixed float 22.10[rad]
 
+volatile uint8_t rot_direct = 0;
+
 /* for FMAC valuables */
 const int16_t x2_buffer[ADC_BUF] = {0, 0, 18, 0, 110, 0, 359, 0, 843, 0, 1560, 0, 2371, 0, 3025, 0, 3277, 0, 3025, 0, 2371, 0, 1560, 0, 843, 0, 359, 0, 110, 0, 18, 0, 0, 0};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
@@ -228,10 +230,18 @@ int main(void)
 
 	LL_mDelay(2000);
 
-	omg_tgt = (int32_t)(45.0*M_PI/100.0f * 1024.0f);
-  	omg_est2 = (int32_t)(5.0*M_PI/100.0f * 1024.0f);
-	adv_ang = (int32_t)(0.0*M_PI/180.0f * 1024);
-	detect_flag = 0;
+	rot_direct = 0;
+	omg_tgt = (uint32_t)(45.0*M_PI/100.0f * 1024.0f);
+  	omg_est2 = (uint32_t)(7.0*M_PI/100.0f * 1024.0f);
+	adv_ang = (uint32_t)(0.0*M_PI/180.0f * 1024);
+	rot_est2 = (uint32_t)( 60*M_PI/180*1024);
+	detect_flag = 1;
+	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_21);
+	LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_21);
+	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_22);
+	LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_22);
+	LL_EXTI_DisableRisingTrig_0_31(LL_EXTI_LINE_29);
+	LL_EXTI_DisableFallingTrig_0_31(LL_EXTI_LINE_29);
 	LL_TIM_EnableCounter(TIM6);
 	LL_TIM_EnableIT_UPDATE(TIM6);
   /* USER CODE END 2 */
