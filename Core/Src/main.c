@@ -24,6 +24,8 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "math.h"
+
+#include "foc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,10 +35,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ADC_BUF 34
-#define Y_SIZE 10
-#define X1_PAD 2
-#define Y_PAD 1
 #define I2C_ADD 0x47
 /* USER CODE END PD */
 
@@ -65,7 +63,6 @@ volatile int32_t rot_est2 = 0;		//fixed float 22.10[rad]
 volatile uint8_t rot_direct = 0;
 
 /* for FMAC valuables */
-const int16_t x2_buffer[ADC_BUF] = {0, 0, 18, 0, 110, 0, 359, 0, 843, 0, 1560, 0, 2371, 0, 3025, 0, 3277, 0, 3025, 0, 2371, 0, 1560, 0, 843, 0, 359, 0, 110, 0, 18, 0, 0, 0};
 volatile uint16_t adc_datas[ADC_BUF] = {0u};
 volatile uint16_t y_buffer[2] = {0u};
 float current[2] = {0u};
@@ -151,49 +148,7 @@ int main(void)
   MX_FMAC_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
-	LL_DMA_EnableIT_TC(DMA1, LL_DMA_CHANNEL_1);
-	LL_ADC_Enable(ADC1);
-	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_1);
-	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_1, LL_ADC_DMA_GetRegAddr(ADC1, LL_ADC_DMA_REG_REGULAR_DATA), (uint32_t)&adc_datas, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_1, ADC_BUF);
-	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
-
-	LL_FMAC_DisableStart(FMAC);
-	LL_FMAC_ConfigX1(FMAC, LL_FMAC_WM_0_THRESHOLD_1, ADC_BUF, ADC_BUF+X1_PAD);
-
-	LL_FMAC_ConfigY(FMAC, LL_FMAC_WM_0_THRESHOLD_1, 2*ADC_BUF+X1_PAD, Y_PAD);
-
-	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_3);
-	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_3, (uint32_t)&FMAC->RDATA, (uint32_t)&y_buffer , LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
-	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_3, 2);
-	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_3);
-
-	LL_FMAC_ConfigX2(FMAC, 0x00, ADC_BUF);
-
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_X2, ADC_BUF, 0, 0);
-
-	for(uint8_t i=0;i<ADC_BUF;i++){
-		LL_FMAC_WriteData(FMAC, x2_buffer[i]);
-	}
-
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_LOAD_Y, ADC_BUF, Y_SIZE, 0);
-
-	for(uint8_t i=0;i<Y_SIZE;i++){
-		LL_FMAC_WriteData(FMAC, 0);
-	}
-
-	LL_FMAC_EnableDMAReq_READ(FMAC);
-	LL_FMAC_EnableDMAReq_WRITE(FMAC);
-
-	LL_FMAC_ConfigFunc(FMAC, LL_FMAC_PROCESSING_START, LL_FMAC_FUNC_CONVO_FIR, ADC_BUF, 0, 0);
-
-	LL_DMA_DisableChannel(DMA1, LL_DMA_CHANNEL_2);
-	LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_2, (uint32_t)&adc_datas, (uint32_t)&FMAC->WDATA, LL_DMA_DIRECTION_MEMORY_TO_PERIPH);
-	LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_2, ADC_BUF);
-	LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_2);
-
-	LL_ADC_REG_StartConversion(ADC1);
-	LL_FMAC_EnableStart(FMAC);
+	adc_setup();
 
 	LL_OPAMP_Enable(OPAMP2);
 	LL_OPAMP_Enable(OPAMP3);
@@ -210,6 +165,7 @@ int main(void)
 	LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
 	LL_TIM_OC_SetCompareCH1(TIM1, 200);
 
+	// start gate driver
 	LL_I2C_Enable(I2C3);
 
 	LL_I2C_HandleTransfer(I2C3, 0x47, LL_I2C_ADDRESSING_MODE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
@@ -1364,8 +1320,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOE);
@@ -1626,8 +1582,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
   LL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1735,8 +1691,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

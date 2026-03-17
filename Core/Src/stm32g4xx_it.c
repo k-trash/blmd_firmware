@@ -223,7 +223,6 @@ void TIM1_UP_TIM16_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 0 */
   /* USER CODE END TIM1_UP_TIM16_IRQn 0 */
-
   /* USER CODE BEGIN TIM1_UP_TIM16_IRQn 1 */
 
   /* USER CODE END TIM1_UP_TIM16_IRQn 1 */
@@ -257,7 +256,6 @@ void TIM6_DAC_IRQHandler(void)
 	tim6_cnt++;
 
   /* USER CODE END TIM6_DAC_IRQn 0 */
-
   /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
 	LL_TIM_ClearFlag_UPDATE(TIM6);
   /* USER CODE END TIM6_DAC_IRQn 1 */
@@ -324,7 +322,6 @@ void COMP1_2_3_IRQHandler(void)
 		}
 	}
   /* USER CODE END COMP1_2_3_IRQn 0 */
-
   /* USER CODE BEGIN COMP1_2_3_IRQn 1 */
 
   /* USER CODE END COMP1_2_3_IRQn 1 */
